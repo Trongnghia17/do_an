@@ -1,0 +1,60 @@
+[tool.poetry]
+name = "owlenglish-ai-service"
+version = "0.1.0"
+description = "AI Service for OwlEnglish - Exam Generation and Grading using FastAPI, MySQL, and ChatGPT"
+authors = ["OwlEnglish Team"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+# MySQL database
+sqlalchemy = "^2.0.25"
+aiomysql = "^0.2.0"
+asyncmy = "^0.2.9"
+pymysql = "^1.1.0"
+alembic = "^1.13.1"  # Database migrations
+pydantic = "^2.5.3"
+pydantic-settings = "^2.1.0"
+openai = "^1.10.0"  # ChatGPT API
+python-dotenv = "^1.0.0"
+python-multipart = "^0.0.6"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+httpx = "^0.26.0"
+redis = "^5.0.1"
+celery = "^5.3.4"
+tenacity = "^8.2.3"  # Retry logic
+loguru = "^0.7.2"  # Better logging
+python-slugify = "^8.0.1"
+pillow = "^10.1.0"  # Image processing
+aiofiles = "^23.2.1"  # Async file operations
+emails = "^0.6"  # Email sending
+jinja2 = "^3.1.2"  # Email templates
+bcrypt = "^4.1.2"  # Password hashing
+itsdangerous = "^2.2.0"
+email-validator = "^2.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+pytest-asyncio = "^0.23.3"
+black = "^23.12.1"
+flake8 = "^7.0.0"
+mypy = "^1.8.0"
+httpx = "^0.26.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false

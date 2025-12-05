@@ -1,0 +1,154 @@
+.profile-page {
+    box-sizing: border-box;
+}
+
+.profile-title {
+    font-size: 16px;
+    color: #888888;
+    letter-spacing: 0%;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* card */
+.profile-page .profile-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(39, 44, 55, 0.06);
+    padding: 10px 10px 0 10px;
+    border: 1px solid #F1F3F5;
+}
+
+/* section */
+.profile-section {
+    margin-bottom: 20px;
+}
+
+.profile-section-end{
+    margin-bottom: 0;
+}
+
+.profile-page .section-title {
+    font-size: 16px;
+    color: #333333;
+    margin-bottom: 8px;
+    padding-left: 4px;
+    font-weight: 600;
+}
+
+
+
+/* rows */
+.profile-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 70px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: 16px;
+    box-sizing: border-box;
+    transition: background .12s;
+}
+
+.profile-row:hover {
+    background: #F5F7F8;
+}
+
+.row-label {
+    color: #454545;
+    font-size: 14px;
+    flex: 0 0 auto;
+    font-weight: 400;
+}
+
+/* value area on right */
+.row-value {
+    color: #454545;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    justify-content: flex-end;
+    font-weight: 500;
+    line-height: 100%;
+}
+
+/* avatar cell */
+.avatar-cell {
+    position: relative;
+    overflow: hidden;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.avatar-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: rgba(0, 0, 0, 0.44);
+    border-bottom-left-radius: 50%;
+    border-bottom-right-radius: 50%;
+}
+
+.avatar-cell-edit-icon {
+    position: absolute;
+    bottom: 0px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    color: #fff;
+}
+
+.avatar-cell-edit-icon img {
+    width: 12px;
+    height: 12px;
+}
+
+/* right chevron */
+.chev {
+    color: #C4C4C4;
+    flex-shrink: 0;
+}
+
+/* text truncate for long email */
+.txt-ellipsis {
+    max-width: 320px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* danger row (delete) */
+.profile-row.danger {
+    color: #E11D48;
+}
+
+.profile-row.danger .row-label {
+    color: #E11D48;
+}
+
+/* responsive */
+@media (max-width: 900px) {
+    .profile-page {
+        padding: 16px;
+    }
+
+    .txt-ellipsis {
+        max-width: 160px;
+    }
+}

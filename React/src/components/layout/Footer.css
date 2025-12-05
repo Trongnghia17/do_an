@@ -1,0 +1,100 @@
+.site-footer {
+    background: #fff;
+    border-top: 1px solid #eef2f5;
+    padding: 28px 16px 18px;
+    color: #0f1724;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.site-footer .inner {
+    max-width: 68%;
+    margin: 0 auto;
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.site-footer .brand {
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.site-footer .logo {
+    width: 293px;
+    height: 75px;
+    margin-bottom: 8px;
+    display: inline-block;
+}
+
+.site-footer .tagline {
+    color: #454545;
+    font-style: italic;
+    font-size: 18px;
+    background: #045CCE08;
+    display: inline-block;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-weight: 400;
+}
+
+.site-footer .col {
+    flex: 0 0 260px;
+    min-width: 200px;
+}
+
+.site-footer .colTitle {
+    margin: 0 0 8px;
+    font-size: 18px;
+    color: #1F2937;
+    font-weight: 700;
+}
+
+.site-footer .list {
+    list-style: none;
+    padding: 0;
+    color: #454545;
+}
+
+.site-footer li {
+    margin-bottom: 15px;
+}
+
+.site-footer .link {
+    color: #454545;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.site-footer .address {
+    color: #454545;
+    font-style: normal;
+    font-size: 16px;
+    line-height: 34px;
+}
+
+.site-footer .links {
+    display: flex;
+    gap: 12px;
+}
+
+.site-footer .smallLink {
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+/* responsive */
+@media (max-width: 768px) {
+    .site-footer .inner {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .site-footer .col {
+        flex: 1 1 100%;
+    }
+}

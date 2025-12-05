@@ -1,0 +1,135 @@
+/* root class (class cha) */
+.exam-history {
+    box-sizing: border-box;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color: #222;
+}
+
+
+.eh-title {
+    font-size: 16px;
+    color: #888888;
+    letter-spacing: 0%;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.eh-card {
+    background: #fff;
+    border: 1px solid #F1F3F5;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(39, 44, 55, 0.06);
+    padding: 12px;
+}
+
+/* tabs */
+.eh-tabs {
+    display: flex;
+    gap: 12px;
+    border-bottom: 1px solid #EEF2F6;
+    padding: 8px 4px;
+    margin-bottom: 12px;
+}
+
+.eh-tab {
+    background: transparent;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    color: #5D5D5D;
+    font-size: 15px;
+    margin-left: 12px;
+}
+.eh-tab-label{
+    margin-left: 10px;
+}
+.eh-tab.active {
+    color: #045CCE;
+    border-bottom: 3px solid #045CCE;
+    background: #fff;
+}
+
+/* table */
+.eh-table-wrap {
+    overflow: auto;
+}
+
+.eh-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.eh-table thead th {
+    text-align: left;
+    font-size: 13px;
+    color: #333333;
+    padding: 12px 16px;
+    border-bottom: 1px solid #EEF2F6;
+    white-space: nowrap;
+}
+.eh-table thead tr{
+    background: #045CCE0D;
+    height: 60px;
+    border-bottom: 1px solid  #E7E7E7;
+}
+.eh-table tbody tr{
+    background: #fff;
+    height: 70px;
+}
+.eh-table tbody td {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #333333;
+    border-bottom: 1px dashed #F1F3F5;
+    vertical-align: middle;
+    font-weight: 600;
+}
+
+.eh-table tbody tr.eh-empty td {
+    text-align: center;
+    color: #9CA3AF;
+    padding: 28px;
+    border-bottom: none;
+}
+
+/* title link */
+.eh-link {
+    color: #045CCE;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.eh-link:hover {
+    text-decoration: underline;
+}
+
+/* loading / error */
+.eh-loading {
+    padding: 28px;
+    text-align: center;
+    color: #6B7280;
+}
+
+.eh-error {
+    padding: 8px 12px;
+    color: #B45309;
+    background: #FFFBEB;
+    border-radius: 6px;
+    margin: 6px 0 12px;
+}
+
+/* responsive */
+@media (max-width: 900px) {
+    .exam-history {
+        padding: 12px;
+    }
+
+    .eh-table {
+        min-width: 700px;
+    }
+}

@@ -1,0 +1,6 @@
+.online-exam-library--exam-package .online-exam-library__main {
+    padding: 0px;
+}
+.online-exam-library--exam-package .online-exam-library__grid{
+    grid-template-columns: repeat(4, 1fr);
+}

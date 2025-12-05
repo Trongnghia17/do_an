@@ -1,0 +1,142 @@
+/* Container và Header */
+.exam-detail-view {
+   
+}
+
+.exam-detail__breadcrumb {
+    font-size: 12px;
+    color: #6D6D6D;
+    margin-bottom: 35px;
+    display: flex;
+}
+
+.exam-detail__breadcrumb span {
+    cursor: pointer;
+    margin: 0 5px;
+}
+
+.exam-detail__breadcrumb .active {
+    font-weight: bold;
+    color: #0537A5;
+}
+
+.exam-detail__title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #1F2937;
+}
+
+/* Thống kê */
+.exam-detail__stats {
+    display: flex;
+    gap: 20px;
+    color: #6d6d6d;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.exam-detail__stat-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid  #E7E7E7;
+    width: 128px;
+    height: 36px;
+    border-radius: 50px;
+    color: #454545;
+    font-weight: 500;
+    font-size: 14px;
+}
+.exam-detail__stat-itemxanh {
+    width: 168px;
+
+}
+/* Các Phần Test */
+.exam-test-section {
+    margin-bottom: 30px;
+    background-color: #fff;
+    border-radius: 5px;
+    border: 1px solid #E7E7E7;
+}
+
+.exam-test-section__title {
+    font-size: 20px;
+    font-weight: 600;
+    padding: 20px;
+    margin-top: 0;
+    margin-bottom: 0;
+    color: #1F2937;
+    background-color: #f5fffc;
+}
+.exam-package-header__info{
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+.exam-package-header__info .info-item{
+    border: 1px solid #E7E7E7;
+    width: 128px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50px;
+    gap: 8px;
+    color: #454545;
+    font-weight: 600;
+}
+.exam-package-header__info .info-item2{
+     width: 168px;
+}
+.exam-test-section__skills-grid {
+    display: flex;
+    border-top: 1px solid #E7E7E7;
+}
+
+/* Card Kỹ năng */
+.skill-card {
+    background-color: #fff;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px solid  #E7E7E7;
+    width: 25%;
+}
+
+.skill-card__icon img {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 10px;
+}
+
+.skill-card__title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    margin-top: 0;
+}
+.skill-card__arrow{
+    margin-bottom: -3px;
+}
+
+.skill-card__button {
+    background: #045CCE08;
+    color: #045CCE;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    height: 44px;
+    width: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}

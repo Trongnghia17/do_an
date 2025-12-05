@@ -1,0 +1,263 @@
+/* Select Exam Mode Modal Styles */
+.select-exam-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.select-exam-modal {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid;
+  border-image: linear-gradient(130.31deg, rgba(4, 92, 206, 0.34) 1.71%, rgba(178, 211, 255, 0.53) 49.48%, rgba(4, 92, 206, 0.42) 97.25%);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.select-exam-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6D6D6D;
+  transition: color 0.2s;
+  z-index: 1;
+}
+
+.select-exam-modal__close:hover {
+  color: #333;
+}
+
+.select-exam-modal__header {
+  padding: 24px;
+}
+
+.select-exam-modal__title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.select-exam-modal__title-icon {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.select-exam-modal__title-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.select-exam-modal__icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F0F7FF;
+  border-radius: 12px;
+}
+
+.select-exam-modal__title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+  text-align: left;
+}
+
+.select-exam-modal__subtitle {
+  font-size: 14px;
+  color: #6D6D6D;
+  margin: 0;
+  text-align: left;
+}
+
+.select-exam-modal__content {
+  padding: 0px 24px 24px 24px;
+}
+
+.select-exam-modal__loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6D6D6D;
+  font-size: 14px;
+}
+
+.select-exam-modal__section {
+ 
+
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+border: 1px solid var(--Mine-Shaft-100, #E7E7E7);
+background: rgba(255, 255, 255, 0.70);
+}
+
+.select-exam-modal__section:last-child {
+  margin-bottom: 0;
+}
+
+.select-exam-modal__section--practice {
+  background: #FEFEFE;
+  border: 1px solid #E5E7EB;
+}
+
+.select-exam-modal__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+ 
+}
+
+.select-exam-modal__section-title {
+  color:  #1F2937;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+  margin: 0px 0px 4px 0px;
+}
+
+.select-exam-modal__section-description {
+  color: #4F4F4F;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  margin: 0px;
+}
+
+.select-exam-modal__section--practice .select-exam-modal__section-description {
+  margin-bottom: 20px;
+}
+
+.select-exam-modal__button {
+
+  border: none;
+
+  padding: 10px 20px;
+
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  border-radius: 30px;
+  background: #045CCE;
+
+
+  color:  #FFF;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.select-exam-modal__button:hover {
+  background: #0347A8;
+}
+
+.select-exam-modal__button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.select-exam-modal__sections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.select-exam-modal__section-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+
+.select-exam-modal__section-info {
+  flex: 1;
+}
+
+.select-exam-modal__section-name {
+
+  color: #454545;
+  font-size: 17px;
+  font-style: normal;
+
+  line-height: normal;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .select-exam-modal {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    max-height: 95vh;
+  }
+
+  .select-exam-modal__header {
+    padding: 32px 20px 20px;
+  }
+
+  .select-exam-modal__title {
+    font-size: 20px;
+  }
+
+  .select-exam-modal__content {
+    padding: 20px;
+  }
+
+  .select-exam-modal__section-item {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .select-exam-modal__button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .select-exam-modal__section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .select-exam-modal__section-header .select-exam-modal__button {
+    width: 100%;
+    justify-content: center;
+  }
+}

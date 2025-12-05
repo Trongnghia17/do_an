@@ -1,0 +1,187 @@
+.payment-history {
+    padding: 20px 28px;
+    box-sizing: border-box;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color: #222;
+}
+
+.ph-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.ph-title {
+    font-size: 16px;
+    color: #888888;
+    letter-spacing: 0%;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.ph-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.ph-btn {
+    padding: 8px 12px;
+    height: 40px;
+    width: 126px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: 600;
+    background: transparent;
+}
+
+.ph-btn--primary {
+    background: #045CCE;
+    color: #fff;
+    border-color: transparent;
+    font-size: 14px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ph-btn-text{
+    color: #fff;
+    margin-left: 10px;
+}
+
+/* card */
+.ph-card {
+    background: #fff;
+    border: 1px solid #F1F3F5;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(39, 44, 55, 0.06);
+}
+
+/* table */
+.ph-table-wrap {
+    overflow: auto;
+}
+
+.ph-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+.ph-table thead tr{
+    background-color: #E7E7E7;
+    height: 60px;
+}
+.ph-table thead th {
+    text-align: left;
+    font-size: 13px;
+    color: #333333;
+    padding: 12px 16px;
+    border-bottom: 1px solid #EEF2F6;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 600;
+}
+.ph-table tbody tr{
+    background-color: #fff;
+    height: 70px;
+}
+.ph-table tbody td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #374151;
+    border-bottom: 1px dashed #F1F3F5;
+    vertical-align: middle;
+}
+
+.ph-empty td {
+    text-align: center;
+    padding: 28px;
+    color: #9CA3AF;
+    border-bottom: none;
+}
+
+/* small helpers */
+.ph-td-id {
+    font-weight: 600;
+    color: #111827;
+}
+
+.ph-td-eggs {
+    font-weight: 700;
+    color: #111827;
+}
+
+/* note */
+.ph-td-note {
+    color: #6B7280;
+    max-width: 420px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* status badges */
+.ph-badge {
+    display: inline-block;
+    padding: 8px;
+    height: 29px;
+    width: 124px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #334155;
+    background: #F3F4F6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.ph-badge--done {
+    background: #8DD4401A;
+    color: #35A815;
+}
+
+.ph-badge--pending {
+    background: #FFBF691F;
+    color: #DDA50C;
+}
+
+.ph-badge--failed {
+    background: #F050521A;
+    color: #F05052;
+}
+
+/* loading / error */
+.ph-loading {
+    padding: 28px;
+    text-align: center;
+    color: #6B7280;
+}
+
+.ph-error {
+    padding: 8px 12px;
+    color: #B45309;
+    background: #FFFBEB;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+/* responsive */
+@media (max-width:900px) {
+    .payment-history {
+        padding: 12px;
+    }
+
+    .ph-table {
+        min-width: 600px;
+    }
+
+    .ph-td-note {
+        max-width: 200px;
+    }
+}
