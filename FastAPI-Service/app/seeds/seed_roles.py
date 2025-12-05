@@ -106,7 +106,6 @@ async def create_admin_user():
             print(f"❌ Error creating admin user: {e}")
             raise
 
-
 async def main():
     """Run all seeds"""
     print("🌱 Starting database seeding...\n")

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import useAuth from '@/features/auth/store/auth.store';
+import useAuth from '@/features/user/auth/store/auth.store';
 
 // CHỈ DÙNG FASTAPI - Không còn Laravel
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000';

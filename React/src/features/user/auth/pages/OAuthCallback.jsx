@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import useAuth from '@/features/auth/store/auth.store';
+import useAuth from '@/features/user/auth/store/auth.store';
 import { getMe } from '@/features/user/api/users.api';
 
 export default function OAuthCallback() {

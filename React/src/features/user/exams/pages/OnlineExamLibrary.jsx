@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSkills } from '../api/exams.api';
 import './OnlineExamLibrary.css';
-import WritingIcon from '../../../assets/images/Writing.png';
-import SpeakingIcon from '../../../assets/images/Speaking.png';
-import ListeningIcon from '../../../assets/images/Listening.png';
-import ReadingIcon from '../../../assets/images/Reading.png';
+import WritingIcon from '@/assets/images/Writing.png';
+import SpeakingIcon from '@/assets/images/Speaking.png';
+import ListeningIcon from '@/assets/images/Listening.png';
+import ReadingIcon from '@/assets/images/Reading.png';
 import SelectExamModeModal from '../components/SelectExamModeModal';
 
 export default function OnlineExamLibrary() {

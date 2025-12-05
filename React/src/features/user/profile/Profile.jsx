@@ -1,5 +1,5 @@
 import React from 'react';
-import useAuth from '@/features/auth/store/auth.store';
+import useAuth from '@/features/user/auth/store/auth.store';
 import avatar_default from '@/assets/images/avatar_default.svg';
 import icon_edit_avatar from '@/assets/images/icon_edit_avatar.svg';
 import next_right from '@/assets/images/next-right.svg';

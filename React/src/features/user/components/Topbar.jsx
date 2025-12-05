@@ -1,16 +1,16 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import useAuth from '@/features/auth/store/auth.store';
-import logo from "../../assets/images/logo.png";
-import fi_bell from "../../assets/images/fi_bell.svg";
-import Capa_1 from "../../assets/images/Capa_1.svg";
-import avatar_default from "../../assets/images/avatar_default.svg";
-import u_setting from "../../assets/images/u_setting.svg";
-import dongho from "../../assets/images/dongho.svg";
-import dangxuat from "../../assets/images/dangxuat.svg";
-import lsthanhtoan from "../../assets/images/lsthanhtoan.svg";
-import lsdangnhap from "../../assets/images/lsdangnhap.svg";
-import lsgiaodich from "../../assets/images/lsgiaodich.svg";
+import useAuth from '@/features/user/auth/store/auth.store';
+import logo from "@/assets/images/logo.png";
+import fi_bell from "@/assets/images/fi_bell.svg";
+import Capa_1 from "@/assets/images/Capa_1.svg";
+import avatar_default from "@/assets/images/avatar_default.svg";
+import u_setting from "@/assets/images/u_setting.svg";
+import dongho from "@/assets/images/dongho.svg";
+import dangxuat from "@/assets/images/dangxuat.svg";
+import lsthanhtoan from "@/assets/images/lsthanhtoan.svg";
+import lsdangnhap from "@/assets/images/lsdangnhap.svg";
+import lsgiaodich from "@/assets/images/lsgiaodich.svg";
 import './Topbar.css';
 
 export default function Topbar() {

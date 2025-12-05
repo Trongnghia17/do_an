@@ -1,16 +1,16 @@
 import { useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import useAuth from '@/features/auth/store/auth.store';
-import u_setting from "../../assets/images/u_setting.svg";
-import u_setting_active from "../../assets/images/u_setting_active.svg";
-import dongho from "../../assets/images/dongho.svg";
-import dongho_active from "../../assets/images/dongho_active.svg";
-import lsthanhtoan from "../../assets/images/lsthanhtoan.svg";
-import lsthanhtoan_active from "../../assets/images/lsthanhtoan_active.svg";
-import lsgiaodich from "../../assets/images/lsgiaodich.svg";
-import lsgiaodich_active from "../../assets/images/lsgiaodich_active.svg";
-import lsdangnhap from "../../assets/images/lsdangnhap.svg";
-import lsdangnhap_active from "../../assets/images/lsdangnhap_active.svg";
+import useAuth from '@/features/user/auth/store/auth.store';
+import u_setting from "@/assets/images/u_setting.svg";
+import u_setting_active from "@/assets/images/u_setting_active.svg";
+import dongho from "@/assets/images/dongho.svg";
+import dongho_active from "@/assets/images/dongho_active.svg";
+import lsthanhtoan from "@/assets/images/lsthanhtoan.svg";
+import lsthanhtoan_active from "@/assets/images/lsthanhtoan_active.svg";
+import lsgiaodich from "@/assets/images/lsgiaodich.svg";
+import lsgiaodich_active from "@/assets/images/lsgiaodich_active.svg";
+import lsdangnhap from "@/assets/images/lsdangnhap.svg";
+import lsdangnhap_active from "@/assets/images/lsdangnhap_active.svg";
 import './Sidebar.css';
 
 export default function Sidebar() {

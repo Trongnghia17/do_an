@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import timedelta, datetime
@@ -88,6 +89,11 @@ async def register(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
+    # Get role name if role exists
+    role_name = None
+    if user.role:
+        role_name = user.role.name
+    
     return Token(
         access_token=access_token,
         user={
@@ -95,6 +101,8 @@ async def register(
             "name": user.name,
             "email": user.email,
             "is_active": user.is_active,
+            "role_id": user.role_id,
+            "role": role_name,
         }
     )
 
@@ -108,9 +116,9 @@ async def login(
     """
     Login with email and password
     """
-    # Find user
+    # Find user with role
     result = await db.execute(
-        select(User).where(User.email == form_data.username)
+        select(User).options(selectinload(User.role)).where(User.email == form_data.username)
     )
     user = result.scalar_one_or_none()
     
@@ -164,6 +172,11 @@ async def login(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
+    # Get role name if role exists
+    role_name = None
+    if user.role:
+        role_name = user.role.name
+    
     return Token(
         access_token=access_token,
         user={
@@ -172,6 +185,7 @@ async def login(
             "email": user.email,
             "is_active": user.is_active,
             "role_id": user.role_id,
+            "role": role_name,
         }
     )
 
@@ -186,7 +200,7 @@ async def login_json(
     Login with JSON payload (alternative to form data)
     """
     result = await db.execute(
-        select(User).where(User.email == login_data.email)
+        select(User).options(selectinload(User.role)).where(User.email == login_data.email)
     )
     user = result.scalar_one_or_none()
     
@@ -232,6 +246,11 @@ async def login_json(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
+    # Get role name if role exists
+    role_name = None
+    if user.role:
+        role_name = user.role.name
+    
     return Token(
         access_token=access_token,
         user={
@@ -240,6 +259,7 @@ async def login_json(
             "email": user.email,
             "is_active": user.is_active,
             "role_id": user.role_id,
+            "role": role_name,
         }
     )
 

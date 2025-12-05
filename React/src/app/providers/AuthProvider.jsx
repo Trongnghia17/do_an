@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import useAuth from '@/features/auth/store/auth.store';
-import { getMe } from '@/features/users/api/users.api';
+import useAuth from '@/features/user/auth/store/auth.store';
+import { getMe } from '@/features/user/api/users.api';
 
 export default function AuthProvider({ children }) {
   const { setUser, token , setInitialized } = useAuth();

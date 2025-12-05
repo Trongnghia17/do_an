@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, message, Space } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import fastapiService from '@/services/fastapi.service';
 
 const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
@@ -11,32 +12,33 @@ const AdminLogin = () => {
     setLoading(true);
     
     try {
-      // TODO: Replace with actual API call
-      // const response = await adminService.login(values);
+      // Call FastAPI login endpoint
+      const response = await fastapiService.auth.login({
+        email: values.email,
+        password: values.password
+      });
       
-      // Mock login for now
-      if (values.email === 'admin@owlenglish.com' && values.password === 'admin123') {
-        // Store token and user info
-        localStorage.setItem('token', 'mock-admin-token-' + Date.now());
-        localStorage.setItem('userRole', 'admin');
-        localStorage.setItem('userName', 'Admin User');
-        localStorage.setItem('userEmail', values.email);
-        
-        message.success('Login successful!');
-        navigate('/admin');
-      } else if (values.email === 'superadmin@owlenglish.com' && values.password === 'super123') {
-        localStorage.setItem('token', 'mock-superadmin-token-' + Date.now());
-        localStorage.setItem('userRole', 'super_admin');
-        localStorage.setItem('userName', 'Super Admin');
-        localStorage.setItem('userEmail', values.email);
-        
-        message.success('Login successful!');
+      // Store token and user info
+      const { access_token, user } = response.data;
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('userRole', user.role || 'user');
+      localStorage.setItem('userName', user.name || user.email);
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userId', user.id);
+      
+      message.success('Đăng nhập thành công!');
+      
+      // Check if user is admin or super_admin to navigate to admin panel
+      if (user.role === 'admin' || user.role === 'super_admin') {
         navigate('/admin');
       } else {
-        message.error('Invalid credentials');
+        message.warning('Bạn không có quyền truy cập trang Admin');
+        localStorage.clear();
       }
     } catch (error) {
-      message.error('Login failed');
+      console.error('Login error:', error);
+      const errorMessage = error.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.';
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }

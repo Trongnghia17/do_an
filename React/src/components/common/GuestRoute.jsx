@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import useAuth from '@/features/auth/store/auth.store';
+import useAuth from '@/features/user/auth/store/auth.store';
 
 export default function GuestRoute({ children }) {
   const { token, user, initialized } = useAuth();

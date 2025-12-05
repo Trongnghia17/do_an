@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from "react-toastify";
-import useAuth from '@/features/auth/store/auth.store';
+import useAuth from '@/features/user/auth/store/auth.store';
 import api from '@/lib/axios';
 import logo from "@/assets/images/logo.png";
 import imgleftlogin from "@/assets/images/imgleftlogin.png";
@@ -13,7 +13,7 @@ import nextright from "@/assets/images/nextright.svg";
 import eye from "@/assets/images/eye.svg";
 import eyeSlash from "@/assets/images/eye-slash.svg";
 import { getMe } from '@/features/user/api/users.api';
-import '@/features/user/auth/pages/Login.css';
+import './Login.css';
 
 export default function Login() {
   const nav = useNavigate();

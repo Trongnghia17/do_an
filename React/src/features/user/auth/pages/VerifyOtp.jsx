@@ -2,9 +2,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import api from "@/lib/axios";
-import logo_otp from "../../../assets/images/logo-otp.png";
-import imgleftlogin from "../../../assets/images/imgleftlogin.png";
-import icon_otp from "../../../assets/images/icon-otp.png";
+import logo_otp from "@/assets/images/logo-otp.png";
+import imgleftlogin from "@/assets/images/imgleftlogin.png";
+import icon_otp from "@/assets/images/icon-otp.png";
 import './Login.css';
 
 export default function VerifyOtp() {

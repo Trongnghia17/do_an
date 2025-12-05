@@ -3,10 +3,10 @@
 
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import ProtectedRoute from '@/components/common/ProtectedRoute';
+import ProtectedRoute from '@/features/user/components/ProtectedRoute';
 import GuestRoute from '@/components/common/GuestRoute';
-import AuthLayout from '@/components/layout/AuthLayout';
-import MainLayout from '@/components/layout/MainLayout';
+import AuthLayout from '@/features/user/components/AuthLayout';
+import MainLayout from '@/features/user/components/MainLayout';
 
 // ... existing imports ...
 
