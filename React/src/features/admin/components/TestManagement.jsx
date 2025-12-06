@@ -10,14 +10,19 @@ import {
   message,
   Popconfirm,
   Tag,
+  Upload,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   EyeOutlined,
+  UploadOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import adminService from '../services/adminService';
+import fastapiService from '@/services/fastapi.service';
 
 const { TextArea } = Input;
 
@@ -26,90 +31,122 @@ const TestManagement = ({ examId }) => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchTests();
+    if (examId) {
+      fetchTests();
+    }
   }, [examId]);
 
   const fetchTests = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await adminService.getTestsByExamId(examId);
+      // Gọi FastAPI endpoint: GET /api/v1/exams/{exam_id}/tests
+      const data = await adminService.getTestsByExamId(examId);
       
-      // Mock data
-      setTimeout(() => {
-        setTests([
-          {
-            id: '1',
-            examId: examId,
-            name: 'Academic Test 1',
-            description: 'First practice test',
-            image: null,
-            isActive: true,
-            createdAt: '2024-01-01',
-          },
-          {
-            id: '2',
-            examId: examId,
-            name: 'Academic Test 2',
-            description: 'Second practice test',
-            image: null,
-            isActive: true,
-            createdAt: '2024-01-02',
-          },
-        ]);
-        setLoading(false);
-      }, 500);
+      // Transform data từ FastAPI format sang UI format
+      const transformedTests = data.map(test => ({
+        id: test.id,
+        examId: test.exam_id,
+        name: test.name,
+        description: test.description,
+        image: test.image,
+        isActive: test.is_active,
+        createdAt: test.created_at,
+      }));
+      
+      setTests(transformedTests);
+      setLoading(false);
     } catch (error) {
-      message.error('Failed to fetch tests');
+      console.error('Error fetching tests:', error);
+      message.error('Tải danh sách nhóm đề thi thất bại: ' + (error.response?.data?.detail || error.message));
       setLoading(false);
     }
   };
 
   const handleCreate = () => {
     setEditingTest(null);
+    setImageUrl('');
     form.resetFields();
     setIsModalOpen(true);
   };
 
   const handleEdit = (record) => {
     setEditingTest(record);
-    form.setFieldsValue(record);
+    setImageUrl(record.image || '');
+    form.setFieldsValue({
+      name: record.name,
+      description: record.description,
+      image: record.image,
+      isActive: record.isActive,
+    });
     setIsModalOpen(true);
+  };
+
+  const handleUpload = async (file) => {
+    setUploading(true);
+    try {
+      const response = await fastapiService.upload.uploadImage(file);
+      const url = response.data.url;
+      
+      // Set image URL to form and state
+      setImageUrl(url);
+      form.setFieldsValue({ image: url });
+      
+      message.success('Tải hình ảnh lên thành công!');
+      return false; // Prevent default upload behavior
+    } catch (error) {
+      console.error('Upload error:', error);
+      message.error('Tải hình ảnh lên thất bại: ' + (error.response?.data?.detail || error.message));
+      return false;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = async (id) => {
     try {
-      // TODO: Replace with actual API call
-      // await adminService.deleteTest(id);
+      // Gọi FastAPI endpoint: DELETE /api/v1/exams/{exam_id}/tests/{test_id}
+      await adminService.deleteTest(examId, id);
       
-      message.success('Test deleted successfully');
+      message.success('Đã xóa nhóm đề thi thành công');
       fetchTests();
     } catch (error) {
-      message.error('Failed to delete test');
+      console.error('Error deleting test:', error);
+      message.error('Xóa nhóm đề thi thất bại: ' + (error.response?.data?.detail || error.message));
     }
   };
 
   const handleSubmit = async (values) => {
     try {
+      // Transform UI data sang FastAPI format
+      const testData = {
+        name: values.name,
+        description: values.description || '',
+        image: values.image || null,
+        is_active: values.isActive !== undefined ? values.isActive : true,
+      };
+
       if (editingTest) {
-        // TODO: Replace with actual API call
-        // await adminService.updateTest(editingTest.id, values);
-        message.success('Test updated successfully');
+        // Gọi FastAPI endpoint: PUT /api/v1/exams/{exam_id}/tests/{test_id}
+        await adminService.updateTest(examId, editingTest.id, testData);
+        message.success('Đã cập nhật nhóm đề thi thành công');
       } else {
-        // TODO: Replace with actual API call
-        // await adminService.createTest(examId, values);
-        message.success('Test created successfully');
+        // Gọi FastAPI endpoint: POST /api/v1/exams/{exam_id}/tests
+        await adminService.createTest(examId, testData);
+        message.success('Đã tạo nhóm đề thi thành công');
       }
       
       setIsModalOpen(false);
       form.resetFields();
       fetchTests();
     } catch (error) {
-      message.error('Failed to save test');
+      console.error('Error saving test:', error);
+      message.error('Lưu nhóm đề thi thất bại: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -119,33 +156,84 @@ const TestManagement = ({ examId }) => {
 
   const columns = [
     {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
+      title: 'Hình ảnh',
+      dataIndex: 'image',
+      key: 'image',
+      width: 80,
+      render: (image) => {
+        if (!image) {
+          return (
+            <div style={{
+              width: 50,
+              height: 50,
+              background: '#f0f0f0',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#999',
+            }}>
+              <EyeOutlined style={{ fontSize: 20 }} />
+            </div>
+          );
+        }
+        
+        const imageUrl = image.startsWith('http') ? image : `http://localhost:8000${image}`;
+        
+        return (
+          <img
+            src={imageUrl}
+            alt="Test"
+            style={{
+              width: 50,
+              height: 50,
+              objectFit: 'cover',
+              borderRadius: 4,
+              border: '1px solid #d9d9d9',
+            }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.parentElement.innerHTML = '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;"><span>❌</span></div>';
+            }}
+          />
+        );
+      },
     },
     {
-      title: 'Description',
+      title: 'Tên nhóm đề thi',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a, b) => a.name.localeCompare(b.name),
+    },
+    {
+      title: 'Mô tả',
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
     },
     {
-      title: 'Status',
+      title: 'Trạng thái',
       dataIndex: 'isActive',
       key: 'isActive',
       render: (isActive) => (
         <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Active' : 'Inactive'}
+          {isActive ? 'Hiển thị' : 'Ẩn'}
         </Tag>
       ),
+      filters: [
+        { text: 'Hiển thị', value: true },
+        { text: 'Ẩn', value: false },
+      ],
+      onFilter: (value, record) => record.isActive === value,
     },
     {
-      title: 'Created At',
+      title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      render: (date) => new Date(date).toLocaleDateString('vi-VN'),
     },
     {
-      title: 'Actions',
+      title: 'Hành động',
       key: 'actions',
       render: (_, record) => (
         <Space size="small">
@@ -155,7 +243,7 @@ const TestManagement = ({ examId }) => {
             icon={<EyeOutlined />}
             onClick={() => handleViewSkills(record.id)}
           >
-            Skills
+            Xem kỹ năng
           </Button>
           <Button
             type="link"
@@ -163,14 +251,14 @@ const TestManagement = ({ examId }) => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Edit
+            Sửa
           </Button>
           <Popconfirm
-            title="Delete test"
-            description="Are you sure? This will delete all skills, sections, and questions."
+            title="Xóa nhóm đề thi"
+            description="Bạn có chắc chắn muốn xóa nhóm đề thi này? Tất cả kỹ năng, phần thi và câu hỏi sẽ bị xóa."
             onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            okText="Có"
+            cancelText="Không"
           >
             <Button
               type="link"
@@ -178,7 +266,7 @@ const TestManagement = ({ examId }) => {
               danger
               icon={<DeleteOutlined />}
             >
-              Delete
+              Xóa
             </Button>
           </Popconfirm>
         </Space>
@@ -189,13 +277,13 @@ const TestManagement = ({ examId }) => {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <h3>Tests in this Exam</h3>
+        <h3>Nhóm đề thi trong bộ đề</h3>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleCreate}
         >
-          Add Test
+          Thêm nhóm đề thi
         </Button>
       </div>
 
@@ -204,15 +292,21 @@ const TestManagement = ({ examId }) => {
         dataSource={tests}
         loading={loading}
         rowKey="id"
-        pagination={false}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} nhóm đề thi`,
+        }}
       />
 
       <Modal
-        title={editingTest ? 'Edit Test' : 'Create Test'}
+        title={editingTest ? 'Sửa nhóm đề thi' : 'Tạo nhóm đề thi mới'}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={() => form.submit()}
         width={600}
+        okText="Lưu"
+        cancelText="Hủy"
       >
         <Form
           form={form}
@@ -221,29 +315,68 @@ const TestManagement = ({ examId }) => {
         >
           <Form.Item
             name="name"
-            label="Test Name"
-            rules={[{ required: true, message: 'Please input test name!' }]}
+            label="Tên nhóm đề thi"
+            rules={[{ required: true, message: 'Vui lòng nhập tên nhóm đề thi!' }]}
           >
-            <Input placeholder="Enter test name" />
+            <Input placeholder="VD: Test 1, Practice Test, Mock Test" />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="Description"
+            label="Mô tả"
           >
-            <TextArea rows={4} placeholder="Enter test description" />
+            <TextArea rows={4} placeholder="Nhập mô tả nhóm đề thi" />
           </Form.Item>
 
           <Form.Item
             name="image"
-            label="Image URL"
+            label="Hình ảnh"
           >
-            <Input placeholder="Enter image URL (optional)" />
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Upload
+                accept="image/*"
+                beforeUpload={handleUpload}
+                showUploadList={false}
+                disabled={uploading}
+              >
+                <Button 
+                  icon={uploading ? <LoadingOutlined /> : <UploadOutlined />}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Đang tải lên...' : 'Tải hình ảnh lên'}
+                </Button>
+              </Upload>
+              
+              {imageUrl && (
+                <div style={{ marginTop: 8 }}>
+                  <img 
+                    src={`http://localhost:8000${imageUrl}`} 
+                    alt="Preview" 
+                    style={{ 
+                      maxWidth: '200px', 
+                      maxHeight: '200px',
+                      objectFit: 'cover',
+                      borderRadius: '4px',
+                      border: '1px solid #d9d9d9'
+                    }} 
+                  />
+                </div>
+              )}
+              
+              <Input 
+                placeholder="Hoặc nhập URL hình ảnh" 
+                value={imageUrl}
+                onChange={(e) => {
+                  setImageUrl(e.target.value);
+                  form.setFieldsValue({ image: e.target.value });
+                }}
+              />
+            </Space>
           </Form.Item>
 
           <Form.Item
             name="isActive"
-            label="Active"
+            label="Hiển thị"
             valuePropName="checked"
             initialValue={true}
           >

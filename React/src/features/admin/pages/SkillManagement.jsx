@@ -26,8 +26,11 @@ import {
   BookOutlined,
   UploadOutlined,
   PlayCircleOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  LoadingOutlined
 } from '@ant-design/icons';
+import adminService from '../services/adminService';
+import fastapiService from '@/services/fastapi.service';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -40,6 +43,8 @@ const SkillManagement = () => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const [form] = Form.useForm();
   
   // Filter states
@@ -64,42 +69,20 @@ const SkillManagement = () => {
 
   const fetchExams = async () => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await adminService.getExams();
-      
-      // Mock data
-      setExams([
-        { id: 1, name: 'IELTS Academic', type: 'ielts' },
-        { id: 2, name: 'TOEIC Practice', type: 'toeic' },
-        { id: 3, name: 'Online English Test', type: 'online' }
-      ]);
+      const data = await adminService.getExams();
+      setExams(data);
     } catch (error) {
+      console.error('Error fetching exams:', error);
       message.error('Tải danh sách bộ đề thất bại');
     }
   };
 
   const fetchTests = async (examId) => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await adminService.getTestsByExam(examId);
-      
-      // Mock data
-      const mockTests = {
-        1: [
-          { id: 1, name: 'IELTS Academic Test 1' },
-          { id: 2, name: 'IELTS Academic Test 2' }
-        ],
-        2: [
-          { id: 3, name: 'TOEIC Test 1' },
-          { id: 4, name: 'TOEIC Test 2' }
-        ],
-        3: [
-          { id: 5, name: 'Online Test 1' }
-        ]
-      };
-      
-      setTests(mockTests[examId] || []);
+      const data = await adminService.getTestsByExamId(examId);
+      setTests(data);
     } catch (error) {
+      console.error('Error fetching tests:', error);
       message.error('Tải danh sách nhóm đề thất bại');
     }
   };
@@ -107,102 +90,42 @@ const SkillManagement = () => {
   const fetchSkills = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await adminService.getAllSkills({ search, skillType, examId, testId });
       
-      // Mock data
-      setTimeout(() => {
-        setSkills([
-          {
-            id: 1,
-            name: 'IELTS Reading Practice Test 1',
-            skillType: 'reading',
-            timeLimit: 60,
-            isActive: true,
-            isOnline: true,
-            examTest: {
-              id: 1,
-              name: 'IELTS Academic Test 1',
-              exam: {
-                id: 1,
-                name: 'IELTS Academic',
-                type: 'ielts'
-              }
-            }
-          },
-          {
-            id: 2,
-            name: 'IELTS Writing Task 1 & 2',
-            skillType: 'writing',
-            timeLimit: 60,
-            isActive: true,
-            isOnline: false,
-            examTest: {
-              id: 1,
-              name: 'IELTS Academic Test 1',
-              exam: {
-                id: 1,
-                name: 'IELTS Academic',
-                type: 'ielts'
-              }
-            }
-          },
-          {
-            id: 3,
-            name: 'IELTS Listening Full Test',
-            skillType: 'listening',
-            timeLimit: 30,
-            isActive: true,
-            isOnline: true,
-            examTest: {
-              id: 1,
-              name: 'IELTS Academic Test 1',
-              exam: {
-                id: 1,
-                name: 'IELTS Academic',
-                type: 'ielts'
-              }
-            }
-          },
-          {
-            id: 4,
-            name: 'IELTS Speaking Part 1-3',
-            skillType: 'speaking',
-            timeLimit: 15,
-            isActive: false,
-            isOnline: false,
-            examTest: {
-              id: 2,
-              name: 'IELTS Academic Test 2',
-              exam: {
-                id: 1,
-                name: 'IELTS Academic',
-                type: 'ielts'
-              }
-            }
-          },
-          {
-            id: 5,
-            name: 'TOEIC Reading Comprehension',
-            skillType: 'reading',
-            timeLimit: 75,
-            isActive: true,
-            isOnline: true,
-            examTest: {
-              id: 3,
-              name: 'TOEIC Test 1',
-              exam: {
-                id: 2,
-                name: 'TOEIC Practice',
-                type: 'toeic'
-              }
-            }
+      // Build query params
+      const params = {};
+      if (searchText) params.search = searchText;
+      if (filterSkillType) params.skill_type = filterSkillType;
+      if (filterExamId) params.exam_id = filterExamId;
+      if (filterTestId) params.exam_test_id = filterTestId;
+      
+      const data = await adminService.getAllSkills(params);
+      
+      // Transform API data to UI format
+      const transformedSkills = data.map(skill => ({
+        id: skill.id,
+        name: skill.name,
+        skillType: skill.skill_type,
+        timeLimit: skill.time_limit,
+        description: skill.description,
+        image: skill.image,
+        isActive: skill.is_active,
+        isOnline: skill.is_online,
+        examTest: {
+          id: skill.exam_test_id,
+          name: skill.exam_test_name,
+          exam: {
+            id: skill.exam_id,
+            name: skill.exam_name,
+            type: skill.exam_type
           }
-        ]);
-        setLoading(false);
-      }, 500);
+        }
+      }));
+      
+      setSkills(transformedSkills);
+      setLoading(false);
     } catch (error) {
-      message.error('Tải danh sách đề thi thất bại');
+      console.error('Error fetching skills:', error);
+      message.error('Tải danh sách kỹ năng thất bại');
       setLoading(false);
     }
   };
@@ -222,11 +145,19 @@ const SkillManagement = () => {
   const handleAdd = () => {
     form.resetFields();
     setEditingSkill(null);
+    setImageUrl('');
     setIsModalOpen(true);
   };
 
-  const handleEdit = (skill) => {
+  const handleEdit = async (skill) => {
     setEditingSkill(skill);
+    setImageUrl(skill.image || '');
+    
+    // Load tests for the exam first
+    if (skill.examTest?.exam?.id) {
+      await fetchTests(skill.examTest.exam.id);
+    }
+    
     form.setFieldsValue({
       name: skill.name,
       skillType: skill.skillType,
@@ -234,21 +165,42 @@ const SkillManagement = () => {
       description: skill.description,
       examId: skill.examTest?.exam?.id,
       examTestId: skill.examTest?.id,
+      image: skill.image,
       isActive: skill.isActive,
       isOnline: skill.isOnline
     });
     setIsModalOpen(true);
   };
 
+  const handleUpload = async (file) => {
+    setUploading(true);
+    try {
+      const response = await fastapiService.upload.uploadImage(file);
+      const url = response.data.url;
+      
+      // Set image URL to form and state
+      setImageUrl(url);
+      form.setFieldsValue({ image: url });
+      
+      message.success('Tải hình ảnh lên thành công!');
+      return false; // Prevent default upload behavior
+    } catch (error) {
+      console.error('Upload error:', error);
+      message.error('Tải hình ảnh lên thất bại: ' + (error.response?.data?.detail || error.message));
+      return false;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
-      // TODO: Replace with actual API call
-      // await adminService.deleteSkill(id);
-      
-      setSkills(skills.filter(s => s.id !== id));
-      message.success('Đã xóa đề thi thành công');
+      await adminService.deleteSkill(id);
+      message.success('Đã xóa kỹ năng thành công');
+      fetchSkills();
     } catch (error) {
-      message.error('Xóa đề thi thất bại');
+      console.error('Error deleting skill:', error);
+      message.error(error.response?.data?.detail || 'Xóa kỹ năng thất bại');
     }
   };
 
@@ -256,41 +208,35 @@ const SkillManagement = () => {
     try {
       const values = await form.validateFields();
       
+      // Transform UI data to API format
+      const skillData = {
+        exam_test_id: values.examTestId,
+        name: values.name,
+        skill_type: values.skillType,
+        time_limit: values.timeLimit || null,
+        description: values.description || null,
+        image: values.image || null,
+        is_active: values.isActive !== undefined ? values.isActive : true,
+        is_online: values.isOnline !== undefined ? values.isOnline : true,
+      };
+      
       if (editingSkill) {
-        // Update
-        // TODO: Replace with actual API call
-        // await adminService.updateSkill(editingSkill.id, values);
-        
-        setSkills(skills.map(s => 
-          s.id === editingSkill.id ? { ...s, ...values } : s
-        ));
-        message.success('Đã cập nhật đề thi thành công');
+        // Update - không cần exam_test_id
+        delete skillData.exam_test_id;
+        await adminService.updateSkill(editingSkill.id, skillData);
+        message.success('Đã cập nhật kỹ năng thành công');
       } else {
         // Create
-        // TODO: Replace with actual API call
-        // const response = await adminService.createSkill(values);
-        
-        const newSkill = {
-          id: Date.now(),
-          ...values,
-          examTest: {
-            id: values.examTestId,
-            name: tests.find(t => t.id === values.examTestId)?.name,
-            exam: {
-              id: values.examId,
-              name: exams.find(e => e.id === values.examId)?.name,
-              type: exams.find(e => e.id === values.examId)?.type
-            }
-          }
-        };
-        setSkills([newSkill, ...skills]);
-        message.success('Đã tạo đề thi thành công');
+        await adminService.createSkill(skillData);
+        message.success('Đã tạo kỹ năng thành công');
       }
       
       setIsModalOpen(false);
       form.resetFields();
+      fetchSkills();
     } catch (error) {
-      console.error('Validation failed:', error);
+      console.error('Error saving skill:', error);
+      message.error(error.response?.data?.detail || 'Lưu kỹ năng thất bại');
     }
   };
 
@@ -333,27 +279,68 @@ const SkillManagement = () => {
 
   const columns = [
     {
-      title: 'Tiêu đề',
+      title: 'Hình ảnh',
+      dataIndex: 'image',
+      key: 'image',
+      width: 80,
+      render: (image) => {
+        if (!image) {
+          return (
+            <div style={{
+              width: 50,
+              height: 50,
+              background: '#f0f0f0',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#999',
+            }}>
+              <BookOutlined style={{ fontSize: 20 }} />
+            </div>
+          );
+        }
+        
+        const imageUrl = image.startsWith('http') ? image : `http://localhost:8000${image}`;
+        
+        return (
+          <img
+            src={imageUrl}
+            alt="Skill"
+            style={{
+              width: 50,
+              height: 50,
+              objectFit: 'cover',
+              borderRadius: 4,
+              border: '1px solid #d9d9d9',
+            }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.parentElement.innerHTML = '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;"><span>❌</span></div>';
+            }}
+          />
+        );
+      },
+    },
+    {
+      title: 'Tên đề thi',
       dataIndex: 'name',
       key: 'name',
-      width: 300,
-      render: (text) => <strong>{text}</strong>
+      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Loại',
       dataIndex: 'skillType',
       key: 'skillType',
-      width: 120,
       render: (type) => (
         <Tag color={getSkillTypeColor(type)}>
           {type.toUpperCase()}
         </Tag>
-      )
+      ),
     },
     {
       title: 'Bộ đề thi',
       key: 'exam',
-      width: 200,
       render: (_, record) => (
         <div>
           {record.examTest?.exam?.name}
@@ -367,46 +354,50 @@ const SkillManagement = () => {
     {
       title: 'Nhóm đề thi',
       key: 'test',
-      width: 200,
       render: (_, record) => record.examTest?.name || '-'
     },
     {
       title: 'Thời gian',
       dataIndex: 'timeLimit',
       key: 'timeLimit',
-      width: 100,
       render: (time) => `${time} phút`
     },
     {
+      title: 'Mô tả',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+    },
+    {
       title: 'Trạng thái',
-      key: 'status',
-      width: 120,
-      render: (_, record) => (
-        <Button
-          size="small"
-          type={record.isActive ? 'primary' : 'default'}
-          onClick={() => handleToggleActive(record)}
-        >
-          {record.isActive ? 'Hiển thị' : 'Ẩn'}
-        </Button>
-      )
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive) => (
+        <Tag color={isActive ? 'green' : 'red'}>
+          {isActive ? 'Hiển thị' : 'Ẩn'}
+        </Tag>
+      ),
+      filters: [
+        { text: 'Hiển thị', value: true },
+        { text: 'Ẩn', value: false },
+      ],
+      onFilter: (value, record) => record.isActive === value,
     },
     {
       title: 'Hành động',
       key: 'actions',
-      width: 300,
-      fixed: 'right',
       render: (_, record) => (
         <Space size="small">
           <Button
-            type="primary"
+            type="link"
             size="small"
             icon={<BookOutlined />}
             onClick={() => handleViewDetail(record.id, record.examTest?.exam?.id, record.examTest?.id)}
           >
-            Xem chi tiết
+            
           </Button>
           <Button
+            type="link"
             size="small"
             icon={<PlayCircleOutlined />}
             onClick={() => {
@@ -414,7 +405,7 @@ const SkillManagement = () => {
               window.open(testUrl, '_blank');
             }}
           >
-            Làm bài
+          
           </Button>
           <Button
             type="link"
@@ -422,7 +413,7 @@ const SkillManagement = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Sửa
+           
           </Button>
           <Popconfirm
             title="Xóa đề thi"
@@ -437,7 +428,7 @@ const SkillManagement = () => {
               danger
               icon={<DeleteOutlined />}
             >
-              Xóa
+              
             </Button>
           </Popconfirm>
         </Space>
@@ -535,17 +526,16 @@ const SkillManagement = () => {
       </Card>
 
       {/* Skills Table */}
-      <Card title={`Danh sách đề thi (${filteredSkills.length})`}>
+      <Card>
         <Table
           columns={columns}
           dataSource={filteredSkills}
           rowKey="id"
           loading={loading}
-          scroll={{ x: 1200 }}
           pagination={{
-            pageSize: 15,
+            pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total) => `Tổng ${total} đề thi`
+            showTotal: (total) => `Tổng ${total} đề thi`,
           }}
         />
       </Card>
@@ -651,9 +641,46 @@ const SkillManagement = () => {
             label="Hình ảnh"
             name="image"
           >
-            <Upload>
-              <Button icon={<UploadOutlined />}>Tải lên hình ảnh</Button>
-            </Upload>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Upload
+                accept="image/*"
+                beforeUpload={handleUpload}
+                showUploadList={false}
+                disabled={uploading}
+              >
+                <Button 
+                  icon={uploading ? <LoadingOutlined /> : <UploadOutlined />}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Đang tải lên...' : 'Tải hình ảnh lên'}
+                </Button>
+              </Upload>
+              
+              {imageUrl && (
+                <div style={{ marginTop: 8 }}>
+                  <img 
+                    src={imageUrl.startsWith('http') ? imageUrl : `http://localhost:8000${imageUrl}`}
+                    alt="Preview" 
+                    style={{ 
+                      maxWidth: '200px', 
+                      maxHeight: '200px',
+                      objectFit: 'cover',
+                      borderRadius: '4px',
+                      border: '1px solid #d9d9d9'
+                    }} 
+                  />
+                </div>
+              )}
+              
+              <Input 
+                placeholder="Hoặc nhập URL hình ảnh" 
+                value={imageUrl}
+                onChange={(e) => {
+                  setImageUrl(e.target.value);
+                  form.setFieldsValue({ image: e.target.value });
+                }}
+              />
+            </Space>
           </Form.Item>
 
           <Row gutter={16}>

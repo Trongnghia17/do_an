@@ -19,6 +19,7 @@ import {
 } from '@ant-design/icons';
 import TestManagement from '../components/TestManagement';
 import ExamInfo from '../components/ExamInfo';
+import adminService from '../services/adminService';
 
 const { TabPane } = Tabs;
 
@@ -36,24 +37,24 @@ const ExamDetail = () => {
   const fetchExamDetail = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await adminService.getExamById(examId);
+      // Gọi FastAPI endpoint: GET /api/v1/exams/{id}
+      const data = await adminService.getExamById(examId);
       
-      // Mock data
-      setTimeout(() => {
-        setExam({
-          id: examId,
-          name: 'IELTS Academic Practice Test 1',
-          type: 'ielts',
-          description: 'Full IELTS Academic test with all 4 skills',
-          image: null,
-          isActive: true,
-          createdAt: '2024-01-01',
-        });
-        setLoading(false);
-      }, 500);
+      // Transform data từ FastAPI format sang UI format
+      setExam({
+        id: data.id,
+        name: data.name,
+        type: data.type,
+        description: data.description,
+        image: data.image,
+        isActive: data.is_active,
+        createdAt: data.created_at,
+      });
+      
+      setLoading(false);
     } catch (error) {
-      message.error('Failed to fetch exam details');
+      console.error('Error fetching exam details:', error);
+      message.error('Tải thông tin bộ đề thất bại: ' + (error.response?.data?.detail || error.message));
       setLoading(false);
     }
   };
@@ -61,13 +62,13 @@ const ExamDetail = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
-        <Spin size="large" />
+        <Spin size="large" tip="Đang tải..." />
       </div>
     );
   }
 
   if (!exam) {
-    return <div>Exam not found</div>;
+    return <div>Không tìm thấy bộ đề</div>;
   }
 
   return (
@@ -77,35 +78,12 @@ const ExamDetail = () => {
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate('/admin/exams')}
         >
-          Back to Exams
+          Quay lại
         </Button>
-        <Button
-          type="primary"
-          icon={<EditOutlined />}
-          onClick={() => message.info('Edit exam feature coming soon')}
-        >
-          Edit Exam
-        </Button>
+       
       </Space>
 
-      <Card title={<h2>{exam.name}</h2>} style={{ marginBottom: 16 }}>
-        <Descriptions column={2}>
-          <Descriptions.Item label="Type">
-            <Tag color="blue">{exam.type.toUpperCase()}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Status">
-            <Tag color={exam.isActive ? 'green' : 'red'}>
-              {exam.isActive ? 'Active' : 'Inactive'}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Created At">
-            {exam.createdAt}
-          </Descriptions.Item>
-          <Descriptions.Item label="Description" span={2}>
-            {exam.description || 'No description'}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
+    
 
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
@@ -113,7 +91,7 @@ const ExamDetail = () => {
             tab={
               <span>
                 <FileTextOutlined />
-                Basic Info
+                Thông tin cơ bản
               </span>
             }
             key="info"
@@ -125,7 +103,7 @@ const ExamDetail = () => {
             tab={
               <span>
                 <BookOutlined />
-                Tests
+                Nhóm đề thi
               </span>
             }
             key="tests"

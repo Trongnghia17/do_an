@@ -13,6 +13,9 @@ import {
   MenuUnfoldOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import useAuth from '@/features/user/auth/store/auth.store';
+import logo from "@/assets/images/logo.png";
+import AuthDebug from './AuthDebug';
 import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
@@ -21,6 +24,7 @@ const AdminLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
@@ -95,9 +99,10 @@ const AdminLayout = () => {
 
   const handleUserMenuClick = ({ key }) => {
     if (key === 'logout') {
-      // Handle logout
-      localStorage.removeItem('token');
-      navigate('/login');
+      // Handle logout - clear both Zustand store and localStorage
+      logout();
+      localStorage.clear();
+      navigate('/admin/login');
     } else if (key === 'profile') {
       navigate('/admin/profile');
     } else if (key === 'settings') {
@@ -107,6 +112,7 @@ const AdminLayout = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      <AuthDebug />
       <Sider
         trigger={null}
         collapsible
@@ -118,13 +124,18 @@ const AdminLayout = () => {
           left: 0,
           top: 0,
           bottom: 0,
+          background: 'white',
         }}
       >
         <div className="admin-logo">
-          {collapsed ? 'OE' : 'OwlEnglish Admin'}
+          <img 
+            src={logo} 
+            alt="OwlEnglish Logo" 
+            className={collapsed ? 'admin-logo__img admin-logo__img-collapsed' : 'admin-logo__img'}
+          />
         </div>
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
@@ -174,7 +185,6 @@ const AdminLayout = () => {
                 <Avatar icon={<UserOutlined />} />
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                   <span style={{ fontWeight: 500 }}>{userName}</span>
-                  {userEmail && <span style={{ fontSize: '12px', color: '#999' }}>{userEmail}</span>}
                 </div>
               </div>
             </Dropdown>

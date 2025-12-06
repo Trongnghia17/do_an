@@ -98,3 +98,99 @@ async def get_user_stats(
         "active": active,
         "inactive": total - active
     }
+
+
+class UserUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    is_active: Optional[bool] = None
+    role_id: Optional[int] = None
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
+    user_data: UserUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update user information"""
+    # Get user
+    result = await db.execute(
+        select(User)
+        .where(User.id == user_id)
+        .where(User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Check if email already exists (if updating email)
+    if user_data.email and user_data.email != user.email:
+        existing_user = await db.execute(
+            select(User)
+            .where(User.email == user_data.email)
+            .where(User.deleted_at.is_(None))
+        )
+        if existing_user.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+    
+    # Update fields
+    if user_data.name is not None:
+        user.name = user_data.name
+    if user_data.email is not None:
+        user.email = user_data.email
+    if user_data.phone is not None:
+        user.phone = user_data.phone
+    if user_data.is_active is not None:
+        user.is_active = user_data.is_active
+    if user_data.role_id is not None:
+        user.role_id = user_data.role_id
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Soft delete user"""
+    # Get user
+    result = await db.execute(
+        select(User)
+        .where(User.id == user_id)
+        .where(User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Prevent self-deletion
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+    
+    # Soft delete
+    user.deleted_at = datetime.utcnow()
+    await db.commit()
+    
+    return {"message": "User deleted successfully"}

@@ -12,7 +12,6 @@ from app.database import Base
 
 class ExamType(str, enum.Enum):
     """Exam type enum"""
-    ONLINE = "online"
     IELTS = "ielts"
     TOEIC = "toeic"
 
@@ -31,7 +30,7 @@ class Exam(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(255), nullable=False)  # IELTS Academic, TOEIC Practice
-    type = Column(SQLEnum(ExamType), default=ExamType.ONLINE, nullable=False)
+    type = Column(SQLEnum(ExamType), default=ExamType.IELTS, nullable=False)
     description = Column(Text, nullable=True)
     image = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -80,6 +79,7 @@ class ExamSkill(Base):
     time_limit = Column(Integer, nullable=True)  # Thời gian làm bài (phút)
     image = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_online = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

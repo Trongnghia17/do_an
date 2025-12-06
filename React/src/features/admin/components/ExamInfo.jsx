@@ -1,21 +1,56 @@
-import { Form, Input, Select, Switch, Button, message } from 'antd';
-import { SaveOutlined } from '@ant-design/icons';
+import { useState } from 'react';
+import { Form, Input, Select, Switch, Button, message, Upload } from 'antd';
+import { SaveOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
+import adminService from '../services/adminService';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 const ExamInfo = ({ exam, onUpdate }) => {
   const [form] = Form.useForm();
+  const [uploading, setUploading] = useState(false);
+  const [imageUrl, setImageUrl] = useState(exam?.image || '');
+
+  const handleImageUpload = async (file) => {
+    setUploading(true);
+    try {
+      const response = await adminService.uploadImage(file);
+      const uploadedImageUrl = response.url;
+      setImageUrl(uploadedImageUrl);
+      form.setFieldsValue({ image: uploadedImageUrl });
+      message.success('Tải ảnh lên thành công');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      message.error('Không thể tải ảnh lên');
+    } finally {
+      setUploading(false);
+    }
+    return false; // Prevent default upload behavior
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl('');
+    form.setFieldsValue({ image: '' });
+    message.success('Đã xóa hình ảnh');
+  };
 
   const handleSubmit = async (values) => {
     try {
-      // TODO: Replace with actual API call
-      // await adminService.updateExam(exam.id, values);
+      // Transform data to FastAPI format
+      const updateData = {
+        name: values.name,
+        type: values.type,
+        description: values.description || null,
+        image: imageUrl || null,
+        is_active: values.isActive,
+      };
       
-      message.success('Exam updated successfully');
+      await adminService.updateExam(exam.id, updateData);
+      message.success('Cập nhật bộ đề thành công');
       onUpdate();
     } catch (error) {
-      message.error('Failed to update exam');
+      console.error('Error updating exam:', error);
+      message.error(error.response?.data?.detail || 'Không thể cập nhật bộ đề');
     }
   };
 
@@ -28,18 +63,18 @@ const ExamInfo = ({ exam, onUpdate }) => {
     >
       <Form.Item
         name="name"
-        label="Exam Name"
-        rules={[{ required: true, message: 'Please input exam name!' }]}
+        label="Tên bộ đề"
+        rules={[{ required: true, message: 'Vui lòng nhập tên bộ đề!' }]}
       >
-        <Input placeholder="Enter exam name" />
+        <Input placeholder="Nhập tên bộ đề" />
       </Form.Item>
 
       <Form.Item
         name="type"
-        label="Exam Type"
-        rules={[{ required: true, message: 'Please select exam type!' }]}
+        label="Loại đề thi"
+        rules={[{ required: true, message: 'Vui lòng chọn loại đề thi!' }]}
       >
-        <Select placeholder="Select exam type">
+        <Select placeholder="Chọn loại đề thi">
           <Option value="online">Online</Option>
           <Option value="ielts">IELTS</Option>
           <Option value="toeic">TOEIC</Option>
@@ -48,21 +83,58 @@ const ExamInfo = ({ exam, onUpdate }) => {
 
       <Form.Item
         name="description"
-        label="Description"
+        label="Mô tả"
       >
-        <TextArea rows={4} placeholder="Enter exam description" />
+        <TextArea rows={4} placeholder="Nhập mô tả bộ đề" />
       </Form.Item>
 
-      <Form.Item
-        name="image"
-        label="Image URL"
-      >
-        <Input placeholder="Enter image URL (optional)" />
+      <Form.Item label="Hình ảnh">
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+          <div>
+            <Upload
+              beforeUpload={handleImageUpload}
+              showUploadList={false}
+              accept="image/*"
+            >
+              <Button icon={<UploadOutlined />} loading={uploading}>
+                {uploading ? 'Đang tải lên...' : 'Tải ảnh lên'}
+              </Button>
+            </Upload>
+            {imageUrl && (
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleRemoveImage}
+                style={{ marginLeft: 8 }}
+              >
+                Xóa ảnh
+              </Button>
+            )}
+          </div>
+          {imageUrl && (
+            <div>
+              <img
+                src={imageUrl.startsWith('http') ? imageUrl : `http://localhost:8000${imageUrl}`}
+                alt="Preview"
+                style={{
+                  maxWidth: '200px',
+                  maxHeight: '200px',
+                  objectFit: 'cover',
+                  borderRadius: '8px',
+                  border: '1px solid #d9d9d9'
+                }}
+              />
+            </div>
+          )}
+        </div>
+        <Form.Item name="image" hidden>
+          <Input />
+        </Form.Item>
       </Form.Item>
 
       <Form.Item
         name="isActive"
-        label="Active"
+        label="Trạng thái hiển thị"
         valuePropName="checked"
       >
         <Switch />
@@ -70,7 +142,7 @@ const ExamInfo = ({ exam, onUpdate }) => {
 
       <Form.Item>
         <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-          Save Changes
+          Lưu thay đổi
         </Button>
       </Form.Item>
     </Form>
