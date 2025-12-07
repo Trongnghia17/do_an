@@ -37,7 +37,7 @@ import {
   QuestionCircleOutlined,
   AppstoreOutlined
 } from '@ant-design/icons';
-import RichTextEditor from '../../../components/common/RichTextEditor';
+import CKEditorWrapper from '../../../components/common/CKEditorWrapper';
 import './SkillDetail.css';
 import adminService from '../services/adminService';
 
@@ -978,7 +978,7 @@ const SkillDetail = () => {
                     {/* Content */}
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Section Content</label>
-                      <RichTextEditor
+                      <CKEditorWrapper
                         value={section.content || ''}
                         onChange={(value) => updateSection(selectedSection, 'content', value)}
                         placeholder="Enter section content (instructions, passage, etc.)..."
@@ -988,7 +988,7 @@ const SkillDetail = () => {
                     {/* Feedback */}
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Section Feedback</label>
-                      <RichTextEditor
+                      <CKEditorWrapper
                         value={section.feedback || ''}
                         onChange={(value) => updateSection(selectedSection, 'feedback', value)}
                         placeholder="Enter feedback for this section..."
@@ -1194,7 +1194,7 @@ const SkillDetail = () => {
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
                         Question Text <span style={{ color: 'red' }}>*</span>
                       </label>
-                      <RichTextEditor
+                      <CKEditorWrapper
                         value={question.questionContent || ''}
                         onChange={(value) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'questionContent', value)}
                         placeholder="Enter question text..."
@@ -1285,7 +1285,7 @@ const SkillDetail = () => {
 
                             <div style={{ marginBottom: 12 }}>
                               <label style={{ display: 'block', marginBottom: 8 }}>Feedback</label>
-                              <RichTextEditor
+                              <CKEditorWrapper
                                 value={answer.feedback || ''}
                                 onChange={(value) => updateAnswer(selectedSection, selectedGroup, selectedQuestion, aIndex, 'feedback', value)}
                                 placeholder="Enter feedback for this answer..."
@@ -1332,7 +1332,7 @@ const SkillDetail = () => {
                     {/* Feedback */}
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Feedback</label>
-                      <RichTextEditor
+                      <CKEditorWrapper
                         value={question.feedback || ''}
                         onChange={(value) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'feedback', value)}
                         placeholder="Enter feedback for this question..."
@@ -1408,7 +1408,7 @@ const SkillDetail = () => {
 
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Question Group Content</label>
-                      <RichTextEditor
+                      <CKEditorWrapper
                         value={group.content || ''}
                         onChange={(value) => updateGroup(selectedSection, selectedGroup, 'content', value)}
                         placeholder="Nhập nội dung nhóm câu hỏi (passage, đoạn văn, hội thoại...)..."
