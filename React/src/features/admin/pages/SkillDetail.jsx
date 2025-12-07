@@ -125,18 +125,32 @@ const SkillDetail = () => {
       });
 
       // Fetch sections for this skill
-      const sectionsData = await adminService.getSectionsBySkillId(skillId);
+      let sectionsData = [];
+      try {
+        sectionsData = await adminService.getSectionsBySkillId(skillId);
+        console.log('Sections data loaded:', sectionsData);
+      } catch (error) {
+        console.error('Error loading sections:', error);
+        if (error.response?.status === 401) {
+          message.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+          return;
+        } else if (error.response?.status === 500) {
+          message.error('Lỗi server khi tải sections: ' + (error.response?.data?.detail || error.message));
+        } else {
+          message.error('Không thể tải sections: ' + (error.response?.data?.detail || error.message));
+        }
+        setSections([]);
+        return;
+      }
       
       // Transform sections data with editable state
       const transformedSections = sectionsData.map((section, index) => ({
         id: section.id,
         name: section.name,
         content: section.content,
-        contentFormat: section.content_format,
-        orderIndex: section.order_index,
-        audioFile: section.audio_file,
-        videoFile: section.video_file,
         feedback: section.feedback,
+        uiLayer: section.ui_layer || 'default',
+        audio: section.audio,
         questionGroupsCount: section.question_groups_count
       }));
       
@@ -152,16 +166,42 @@ const SkillDetail = () => {
           const sectionGroups = await adminService.getGroupsBySectionId(section.id);
           groupsData[sIndex] = sectionGroups.map(group => ({
             id: group.id,
-            content: group.content,
+            name: group.name,
             questionType: group.question_type,
-            questionCount: group.questions?.length || 0
+            content: group.content,
+            questionsCount: group.questions_count || 0
           }));
           
           // Fetch questions for each group
           for (let gIndex = 0; gIndex < sectionGroups.length; gIndex++) {
             const group = sectionGroups[gIndex];
             const groupKey = `${sIndex}-${gIndex}`;
-            questionsData[groupKey] = group.questions || [];
+            
+            try {
+              // Fetch questions from API
+              const groupQuestions = await adminService.getQuestionsByGroupId(group.id);
+              
+              // Transform questions to UI format
+              questionsData[groupKey] = groupQuestions.map(q => ({
+                id: q.id,
+                questionContent: q.question_text,
+                questionType: q.question_type,
+                correctAnswer: q.correct_answer,
+                points: q.points,
+                explanation: q.explanation,
+                // Parse answers from options field
+                answers: q.options ? JSON.parse(q.options).map(opt => ({
+                  id: opt.id,
+                  content: opt.content,
+                  isCorrect: opt.is_correct
+                })) : [],
+                // For short_text type, answer content is in correct_answer field
+                answerContent: q.question_type === 'short_text' ? q.correct_answer : ''
+              }));
+            } catch (error) {
+              console.error(`Error fetching questions for group ${group.id}:`, error);
+              questionsData[groupKey] = [];
+            }
           }
         } catch (error) {
           console.error(`Error fetching groups for section ${section.id}:`, error);
@@ -185,7 +225,8 @@ const SkillDetail = () => {
       name: '',
       content: '',
       feedback: '',
-      orderIndex: sections.length + 1,
+      uiLayer: 'default',
+      audio: '',
       isNew: true
     };
     setSections([...sections, newSection]);
@@ -271,8 +312,9 @@ const SkillDetail = () => {
     const sectionGroups = groups[sectionIndex] || [];
     const newGroup = {
       id: `new-${Date.now()}`,
+      name: '',
       content: '',
-      questionType: 'multiple_choice',
+      questionType: 'multipleChoice',
       questionCount: 0,
       isNew: true
     };
@@ -306,11 +348,12 @@ const SkillDetail = () => {
     const groupQuestions = questions[groupKey] || [];
     const newQuestion = {
       id: `new-${Date.now()}`,
-      content: '',
-      point: 1,
-      questionType: 'short_text',
-      answerContent: '',
-      feedback: '',
+      questionContent: '',
+      questionType: 'multiple_choice',
+      options: '',
+      correct_answer: '',
+      explanation: '',
+      points: 1,
       isNew: true,
       answers: []
     };
@@ -343,6 +386,8 @@ const SkillDetail = () => {
 
   const handleAddAnswer = (sectionIndex, groupIndex, questionIndex) => {
     const groupKey = `${sectionIndex}-${groupIndex}`;
+    if (!questions[groupKey] || !questions[groupKey][questionIndex]) return;
+    
     const question = questions[groupKey][questionIndex];
     const newAnswer = {
       id: `new-${Date.now()}`,
@@ -358,6 +403,8 @@ const SkillDetail = () => {
 
   const handleDeleteAnswer = (sectionIndex, groupIndex, questionIndex, answerIndex) => {
     const groupKey = `${sectionIndex}-${groupIndex}`;
+    if (!questions[groupKey] || !questions[groupKey][questionIndex]) return;
+    
     const question = questions[groupKey][questionIndex];
     const newAnswers = (question.answers || []).filter((_, idx) => idx !== answerIndex);
     updateQuestion(sectionIndex, groupIndex, questionIndex, 'answers', newAnswers);
@@ -365,6 +412,8 @@ const SkillDetail = () => {
 
   const updateAnswer = (sectionIndex, groupIndex, questionIndex, answerIndex, field, value) => {
     const groupKey = `${sectionIndex}-${groupIndex}`;
+    if (!questions[groupKey] || !questions[groupKey][questionIndex]) return;
+    
     const question = questions[groupKey][questionIndex];
     const newAnswers = [...(question.answers || [])];
     newAnswers[answerIndex] = {
@@ -376,6 +425,188 @@ const SkillDetail = () => {
 
   const handleManageQuestionGroups = (sectionId) => {
     navigate(`/admin/skills/${skillId}/sections/${sectionId}/groups`);
+  };
+
+  const handleSaveAll = async () => {
+    try {
+      message.loading({ content: 'Đang lưu thay đổi...', key: 'saving' });
+      
+      let savedCount = 0;
+      let errorCount = 0;
+      
+      // 1. Update Skill information
+      try {
+        await adminService.updateSkill(skillId, {
+          name: skill.name,
+          description: skill.description,
+          skill_type: skill.skillType,
+          time_limit: skill.timeLimit,
+          is_active: skill.isActive,
+          is_online: skill.isOnline
+        });
+        console.log('Skill updated successfully');
+        savedCount++;
+      } catch (error) {
+        console.error('Error updating skill:', error);
+        errorCount++;
+      }
+      
+      // 2. Save/Update Sections
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        try {
+          if (section.isNew) {
+            // Create new section
+            const newSection = await adminService.createSection(skillId, {
+              name: section.name,
+              content: section.content,
+              feedback: section.feedback,
+              ui_layer: section.uiLayer,
+              audio: section.audio
+            });
+            console.log('Created section:', newSection);
+            // Update section with new ID
+            sections[i].id = newSection.id;
+            sections[i].isNew = false;
+          } else {
+            // Update existing section
+            await adminService.updateSection(section.id, {
+              name: section.name,
+              content: section.content,
+              feedback: section.feedback,
+              ui_layer: section.uiLayer,
+              audio: section.audio
+            });
+            console.log('Updated section:', section.id);
+          }
+          savedCount++;
+        } catch (error) {
+          console.error(`Error saving section ${i}:`, error);
+          errorCount++;
+        }
+      }
+      
+      // 3. Save/Update Question Groups
+      for (let sIndex = 0; sIndex < sections.length; sIndex++) {
+        const section = sections[sIndex];
+        const sectionGroups = groups[sIndex] || [];
+        
+        for (let gIndex = 0; gIndex < sectionGroups.length; gIndex++) {
+          const group = sectionGroups[gIndex];
+          try {
+            if (group.isNew) {
+              // Create new group
+              const newGroup = await adminService.createGroup(section.id, {
+                name: group.name || `Group ${gIndex + 1}`,
+                question_type: group.questionType || 'multipleChoice',
+                content: group.content
+              });
+              console.log('Created group:', newGroup);
+              // Update group with new ID
+              groups[sIndex][gIndex].id = newGroup.id;
+              groups[sIndex][gIndex].isNew = false;
+            } else if (group.id && !group.id.toString().startsWith('new-')) {
+              // Update existing group
+              await adminService.updateGroup(group.id, {
+                name: group.name || `Group ${gIndex + 1}`,
+                question_type: group.questionType || 'multipleChoice',
+                content: group.content
+              });
+              console.log('Updated group:', group.id);
+            }
+            savedCount++;
+          } catch (error) {
+            console.error(`Error saving group ${sIndex}-${gIndex}:`, error);
+            errorCount++;
+          }
+        }
+      }
+      
+      // 4. Save/Update Questions
+      for (let sIndex = 0; sIndex < sections.length; sIndex++) {
+        const section = sections[sIndex];
+        const sectionGroups = groups[sIndex] || [];
+        
+        for (let gIndex = 0; gIndex < sectionGroups.length; gIndex++) {
+          const group = sectionGroups[gIndex];
+          const groupKey = `${sIndex}-${gIndex}`;
+          const groupQuestions = questions[groupKey] || [];
+          
+          // Skip if group doesn't have a valid ID yet
+          if (!group.id || group.id.toString().startsWith('new-')) {
+            console.warn(`Cannot save questions for group ${groupKey} - group not saved yet`);
+            continue;
+          }
+          
+          for (let qIndex = 0; qIndex < groupQuestions.length; qIndex++) {
+            const question = groupQuestions[qIndex];
+            try {
+              // Prepare question data
+              const questionData = {
+                question_text: question.questionContent || '',
+                question_type: question.questionType || 'multiple_choice',
+                points: question.points || 1,
+                explanation: question.explanation || null
+              };
+              
+              // Handle answers for multiple choice questions
+              if (question.questionType === 'multiple_choice' && question.answers && question.answers.length > 0) {
+                // Convert answers to JSON string for options field
+                const options = question.answers.map((ans, idx) => ({
+                  id: idx,
+                  content: ans.content || '',
+                  is_correct: ans.isCorrect || false
+                }));
+                questionData.options = JSON.stringify(options);
+                
+                // Find correct answer
+                const correctAnswerIndex = question.answers.findIndex(ans => ans.isCorrect);
+                if (correctAnswerIndex >= 0) {
+                  questionData.correct_answer = correctAnswerIndex.toString();
+                }
+              } else if (question.questionType === 'short_text') {
+                // For short text, correct answer is the expected answer
+                questionData.correct_answer = question.answerContent || '';
+              }
+              
+              if (question.isNew || question.id.toString().startsWith('new-')) {
+                // Create new question - must include question_group_id
+                questionData.question_group_id = group.id;
+                const newQuestion = await adminService.createQuestion(questionData);
+                console.log('Created question:', newQuestion);
+                // Update question with new ID
+                questions[groupKey][qIndex].id = newQuestion.id;
+                questions[groupKey][qIndex].isNew = false;
+              } else {
+                // Update existing question - no need for question_group_id
+                await adminService.updateQuestion(question.id, questionData);
+                console.log('Updated question:', question.id);
+              }
+              savedCount++;
+            } catch (error) {
+              console.error(`Error saving question ${groupKey}-${qIndex}:`, error);
+              errorCount++;
+            }
+          }
+        }
+      }
+      
+      message.success({ 
+        content: `✅ Đã lưu: ${savedCount} items. ${errorCount > 0 ? `❌ Lỗi: ${errorCount} items` : ''}`, 
+        key: 'saving', 
+        duration: 3 
+      });
+      
+      // Refresh data
+      await fetchSkillDetail();
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      message.error({ 
+        content: 'Lưu thay đổi thất bại: ' + (error.response?.data?.detail || error.message || 'Lỗi không xác định'), 
+        key: 'saving',
+        duration: 5
+      });
+    }
   };
 
   const handleTakeTest = () => {
@@ -401,19 +632,27 @@ const SkillDetail = () => {
       {/* Header */}
       <div className="skill-detail-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Button 
               icon={<ArrowLeftOutlined />} 
               onClick={() => navigate(-1)}
-              style={{ marginRight: 16 }}
             />
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20 }}>
+                <EditOutlined style={{ marginRight: 8 }} />
+                Chỉnh sửa Skill: {skill.name}
+              </h2>
+              <p style={{ margin: 0, fontSize: 13, color: '#666' }}>
+                Cập nhật thông tin, sections, groups và questions
+              </p>
+            </div>
           </div>
           <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
-              Quay lại
+            <Button onClick={() => navigate(-1)}>
+              Hủy
             </Button>
-            <Button type="primary" icon={<SaveOutlined />}>
-              Cập nhật
+            <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveAll}>
+              Lưu tất cả thay đổi
             </Button>
           </Space>
         </div>
@@ -423,6 +662,29 @@ const SkillDetail = () => {
         {/* Sidebar Navigation */}
         <div className="skill-detail-sidebar">
           <div style={{ background: 'white', borderRadius: 8, padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            {/* Skill Info Link */}
+            <div 
+              onClick={() => {
+                setSelectedSection(null);
+                setSelectedGroup(null);
+                setSelectedQuestion(null);
+              }}
+              style={{
+                padding: '8px 12px',
+                background: selectedSection === null ? '#1890ff' : '#f0f5ff',
+                borderRadius: 4,
+                cursor: 'pointer',
+                marginBottom: 12,
+                fontWeight: 600,
+                color: selectedSection === null ? 'white' : '#1890ff'
+              }}
+            >
+              <BookOutlined style={{ marginRight: 8 }} />
+              Skill Information
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
+
             {sections.map((section, sIndex) => (
               <div key={sIndex} style={{ marginBottom: 8 }}>
                 <div
@@ -538,8 +800,100 @@ const SkillDetail = () => {
 
         {/* Main Content */}
         <div className="skill-detail-content">
-          {/* Show Section Editor if only section is selected */}
-          {selectedSection !== null && selectedGroup === null && selectedQuestion === null ? (
+          {/* Show Skill Info Editor when no section selected */}
+          {selectedSection === null && selectedGroup === null && selectedQuestion === null ? (
+            <div style={{ 
+              padding: 24, 
+              background: 'white',
+              borderRadius: 8,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{ marginBottom: 24 }}>
+                <BookOutlined style={{ marginRight: 8 }} />
+                Thông tin Skill
+              </h3>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                  Tên Skill <span style={{ color: 'red' }}>*</span>
+                </label>
+                <Input
+                  value={skill.name}
+                  onChange={(e) => setSkill({ ...skill, name: e.target.value })}
+                  placeholder="Nhập tên skill"
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Mô tả</label>
+                <Input.TextArea
+                  value={skill.description || ''}
+                  onChange={(e) => setSkill({ ...skill, description: e.target.value })}
+                  placeholder="Nhập mô tả skill"
+                  rows={4}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Loại Skill</label>
+                  <Select 
+                    value={skill.skillType}
+                    onChange={(value) => setSkill({ ...skill, skillType: value })}
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="reading">Reading</Option>
+                    <Option value="listening">Listening</Option>
+                    <Option value="writing">Writing</Option>
+                    <Option value="speaking">Speaking</Option>
+                  </Select>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Thời gian (phút)</label>
+                  <InputNumber
+                    value={skill.timeLimit}
+                    onChange={(value) => setSkill({ ...skill, timeLimit: value })}
+                    placeholder="Nhập thời gian"
+                    min={1}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Trạng thái</label>
+                  <Switch
+                    checked={skill.isActive}
+                    onChange={(checked) => setSkill({ ...skill, isActive: checked })}
+                    checkedChildren="Active"
+                    unCheckedChildren="Inactive"
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Online</label>
+                  <Switch
+                    checked={skill.isOnline}
+                    onChange={(checked) => setSkill({ ...skill, isOnline: checked })}
+                    checkedChildren="Online"
+                    unCheckedChildren="Offline"
+                  />
+                </div>
+              </div>
+
+              <Divider />
+
+              <div>
+                <h4>Sections ({sections.length})</h4>
+                <p style={{ color: '#666', fontSize: 13 }}>
+                  Chọn một section từ sidebar để chỉnh sửa hoặc thêm section mới.
+                </p>
+              </div>
+            </div>
+          ) : selectedSection !== null && selectedGroup === null && selectedQuestion === null ? (
+            /* Show Section Editor if only section is selected */
             <div style={{ 
               padding: 24, 
               background: 'white',
@@ -563,51 +917,80 @@ const SkillDetail = () => {
               </div>
 
               {(() => {
+                // Safe check for section
+                if (!sections[selectedSection]) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: 40 }}>
+                      <p>Section not found.</p>
+                      <Button onClick={() => setSelectedSection(null)}>Back to All Sections</Button>
+                    </div>
+                  );
+                }
+                
                 const section = sections[selectedSection];
                 return (
                   <div>
                     <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Section Title</label>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Section Name</label>
                       <Input
                         value={section.name}
                         onChange={(e) => updateSection(selectedSection, 'name', e.target.value)}
-                        placeholder="Enter section title"
+                        placeholder="Enter section name"
                       />
                     </div>
 
+                    {/* Content */}
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Section Content</label>
                       <RichTextEditor
                         value={section.content || ''}
                         onChange={(value) => updateSection(selectedSection, 'content', value)}
-                        placeholder="Nhập nội dung..."
+                        placeholder="Enter section content (instructions, passage, etc.)..."
                       />
                     </div>
 
+                    {/* Feedback */}
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Section Feedback</label>
                       <RichTextEditor
                         value={section.feedback || ''}
                         onChange={(value) => updateSection(selectedSection, 'feedback', value)}
-                        placeholder="Nhập phản hồi..."
+                        placeholder="Enter feedback for this section..."
                       />
                     </div>
 
-                    {skill.skillType === 'listening' && (
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                          Audio File <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <Upload>
-                          <Button icon={<UploadOutlined />}>Tải lên âm thanh</Button>
-                        </Upload>
-                        {section.audioFile && (
-                          <audio controls style={{ width: '100%', marginTop: 8 }}>
-                            <source src={section.audioFile} />
-                          </audio>
-                        )}
-                      </div>
-                    )}
+                    {/* UI Layer */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                        UI Layer
+                      </label>
+                      <Select
+                        value={section.uiLayer || 'default'}
+                        onChange={(value) => updateSection(selectedSection, 'uiLayer', value)}
+                        style={{ width: '100%' }}
+                      >
+                        <Option value="default">Default UI</Option>
+                        <Option value="layer1">Layer 1</Option>
+                        <Option value="layer2">Layer 2</Option>
+                      </Select>
+                    </div>
+
+                    {/* Audio File URL */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                        Audio File URL
+                      </label>
+                      <Input
+                        value={section.audio || ''}
+                        onChange={(e) => updateSection(selectedSection, 'audio', e.target.value)}
+                        placeholder="Enter audio file URL (optional)"
+                      />
+                      {section.audio && (
+                        <audio controls style={{ width: '100%', marginTop: 8 }}>
+                          <source src={section.audio} />
+                        </audio>
+                      )}
+                    </div>
 
                     <Divider />
 
@@ -706,32 +1089,34 @@ const SkillDetail = () => {
               </div>
 
               {(() => {
-                const question = questions[`${selectedSection}-${selectedGroup}`][selectedQuestion];
+                // Safe check for question
+                const groupKey = `${selectedSection}-${selectedGroup}`;
+                if (!questions[groupKey] || !questions[groupKey][selectedQuestion]) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: 40 }}>
+                      <p>Question not found. Please go back to group.</p>
+                      <Button onClick={() => setSelectedQuestion(null)}>Back to Group</Button>
+                    </div>
+                  );
+                }
+                
+                const question = questions[groupKey][selectedQuestion];
                 return (
                   <div>
                     {/* Question Content */}
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                        Question Content <span style={{ color: 'red' }}>*</span>
+                        Question Text <span style={{ color: 'red' }}>*</span>
                       </label>
                       <RichTextEditor
-                        value={question.content || ''}
-                        onChange={(value) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'content', value)}
-                        placeholder="Enter question content..."
+                        value={question.questionContent || ''}
+                        onChange={(value) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'questionContent', value)}
+                        placeholder="Enter question text..."
                       />
                     </div>
 
-                    {/* Points and Question Type */}
+                    {/* Question Type and Points */}
                     <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Points</label>
-                        <Input
-                          type="number"
-                          value={question.point}
-                          onChange={(e) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'point', Number(e.target.value))}
-                          placeholder="1"
-                        />
-                      </div>
                       <div style={{ flex: 1 }}>
                         <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Question Type</label>
                         <Select 
@@ -739,12 +1124,33 @@ const SkillDetail = () => {
                           onChange={(value) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'questionType', value)}
                           style={{ width: '100%' }}
                         >
-                          <Option value="short_text">Short Text</Option>
                           <Option value="multiple_choice">Multiple Choice</Option>
+                          <Option value="short_text">Short Text</Option>
                           <Option value="yes_no_not_given">Yes/No/Not Given</Option>
                           <Option value="true_false_not_given">True/False/Not Given</Option>
+                          <Option value="fill_blank">Fill in the Blank</Option>
                         </Select>
                       </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Points</label>
+                        <InputNumber
+                          value={question.points || 1}
+                          onChange={(value) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'points', value)}
+                          min={1}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Explanation/Feedback */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Explanation</label>
+                      <TextArea
+                        value={question.explanation || ''}
+                        onChange={(e) => updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'explanation', e.target.value)}
+                        placeholder="Enter explanation for the correct answer (optional)"
+                        rows={3}
+                      />
                     </div>
 
                     {/* Answers Section for Multiple Choice */}
@@ -879,37 +1285,50 @@ const SkillDetail = () => {
               </div>
 
               {(() => {
+                // Safe check for groups
+                if (!groups[selectedSection] || !groups[selectedSection][selectedGroup]) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: 40 }}>
+                      <p>Group not found. Please go back to section.</p>
+                      <Button onClick={() => setSelectedGroup(null)}>Back to Section</Button>
+                    </div>
+                  );
+                }
+                
                 const group = groups[selectedSection][selectedGroup];
                 return (
                   <div>
                     <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Question Group Content</label>
-                      <RichTextEditor
-                        value={group.content || ''}
-                        onChange={(value) => updateGroup(selectedSection, selectedGroup, 'content', value)}
-                        placeholder="Nhập nội dung nhóm câu hỏi..."
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Group Name</label>
+                      <Input
+                        value={group.name || ''}
+                        onChange={(e) => updateGroup(selectedSection, selectedGroup, 'name', e.target.value)}
+                        placeholder="Enter group name (e.g., Questions 1-5)"
                       />
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Question Type</label>
-                      <Select 
-                        value={group.questionType} 
+                      <Select
+                        value={group.questionType || 'multipleChoice'}
                         onChange={(value) => updateGroup(selectedSection, selectedGroup, 'questionType', value)}
                         style={{ width: '100%' }}
                       >
-                        <Option value="multiple_choice">Multiple Choice</Option>
-                        <Option value="yes_no_not_given">Yes/No/Not Given</Option>
-                        <Option value="true_false_not_given">True/False/Not Given</Option>
-                        <Option value="short_text">Short Text</Option>
-                        <Option value="table_selection">Table Selection</Option>
+                        <Option value="multipleChoice">Multiple Choice</Option>
+                        <Option value="trueFalse">True/False</Option>
+                        <Option value="fillInTheBlank">Fill in the Blank</Option>
+                        <Option value="matching">Matching</Option>
+                        <Option value="essay">Essay</Option>
                       </Select>
                     </div>
 
-                    <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
-                      <Checkbox>Answer inputs inside content</Checkbox>
-                      <Checkbox>Split content and questions side by side</Checkbox>
-                      <Checkbox>Allow drag and drop answers</Checkbox>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Question Group Content</label>
+                      <RichTextEditor
+                        value={group.content || ''}
+                        onChange={(value) => updateGroup(selectedSection, selectedGroup, 'content', value)}
+                        placeholder="Nhập nội dung nhóm câu hỏi (passage, đoạn văn, hội thoại...)..."
+                      />
                     </div>
 
                     <Divider />

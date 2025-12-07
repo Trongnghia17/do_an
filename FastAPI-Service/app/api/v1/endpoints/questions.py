@@ -18,10 +18,13 @@ class QuestionResponse(BaseModel):
     id: int
     question_group_id: int
     question_text: str
-    question_type: Optional[str]
-    order: int
-    is_active: bool
+    question_type: str
+    options: Optional[str] = None
+    correct_answer: Optional[str] = None
+    explanation: Optional[str] = None
+    points: int = 1
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -31,17 +34,21 @@ class QuestionCreate(BaseModel):
     """Create question request"""
     question_group_id: int
     question_text: str
-    question_type: Optional[str] = None
-    order: int = 0
-    is_active: bool = True
+    question_type: str = "multiple_choice"
+    options: Optional[str] = None
+    correct_answer: Optional[str] = None
+    explanation: Optional[str] = None
+    points: int = 1
 
 
 class QuestionUpdate(BaseModel):
     """Update question request"""
     question_text: Optional[str] = None
     question_type: Optional[str] = None
-    order: Optional[int] = None
-    is_active: Optional[bool] = None
+    options: Optional[str] = None
+    correct_answer: Optional[str] = None
+    explanation: Optional[str] = None
+    points: Optional[int] = None
 
 
 @router.get("/", response_model=List[QuestionResponse])
@@ -62,7 +69,7 @@ async def list_questions(
     if is_active is not None:
         query = query.where(ExamQuestion.is_active == is_active)
     
-    query = query.offset(skip).limit(limit).order_by(ExamQuestion.order)
+    query = query.offset(skip).limit(limit)
     
     result = await db.execute(query)
     questions = result.scalars().all()

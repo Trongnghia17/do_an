@@ -161,6 +161,37 @@ const adminService = {
     return response.data;
   },
 
+  // ========== Question Groups Management ==========
+  getGroupsBySectionId: async (sectionId) => {
+    const response = await fastapiService.group.listGroupsBySection(sectionId);
+    return response.data;
+  },
+
+  getGroupById: async (groupId) => {
+    const response = await fastapiService.group.getGroup(groupId);
+    return response.data;
+  },
+
+  getQuestionsByGroupId: async (groupId) => {
+    const response = await fastapiService.group.getQuestionsByGroup(groupId);
+    return response.data;
+  },
+
+  createGroup: async (sectionId, groupData) => {
+    const response = await fastapiService.group.createGroup(sectionId, groupData);
+    return response.data;
+  },
+
+  updateGroup: async (groupId, groupData) => {
+    const response = await fastapiService.group.updateGroup(groupId, groupData);
+    return response.data;
+  },
+
+  deleteGroup: async (groupId) => {
+    const response = await fastapiService.group.deleteGroup(groupId);
+    return response.data;
+  },
+
   // ========== AI Generation ==========
   generateQuestions: async (data) => {
     const response = await fastapiService.aiGeneration.generateQuestions(data);

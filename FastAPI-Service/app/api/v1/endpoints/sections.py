@@ -17,13 +17,12 @@ class SectionResponse(BaseModel):
     id: int
     exam_skill_id: int
     name: str
-    content: Optional[str]
-    content_format: str
-    order_index: int
-    audio_file: Optional[str] = None
-    video_file: Optional[str] = None
+    content: Optional[str] = None
     feedback: Optional[str] = None
+    ui_layer: Optional[str] = None
+    audio: Optional[str] = None
     created_at: datetime
+    updated_at: datetime
     question_groups_count: int = 0
     
     class Config:
@@ -33,21 +32,17 @@ class SectionResponse(BaseModel):
 class SectionCreateRequest(BaseModel):
     name: str
     content: Optional[str] = None
-    content_format: str = "text"
-    order_index: int
-    audio_file: Optional[str] = None
-    video_file: Optional[str] = None
     feedback: Optional[str] = None
+    ui_layer: Optional[str] = None
+    audio: Optional[str] = None
 
 
 class SectionUpdateRequest(BaseModel):
     name: Optional[str] = None
     content: Optional[str] = None
-    content_format: Optional[str] = None
-    order_index: Optional[int] = None
-    audio_file: Optional[str] = None
-    video_file: Optional[str] = None
     feedback: Optional[str] = None
+    ui_layer: Optional[str] = None
+    audio: Optional[str] = None
 
 
 @router.get("/skills/{skill_id}/sections", response_model=List[SectionResponse])
@@ -71,8 +66,9 @@ async def list_sections(
     
     # Get sections
     query = select(ExamSection).where(
-        ExamSection.exam_skill_id == skill_id
-    ).order_by(ExamSection.order_index)
+        ExamSection.exam_skill_id == skill_id,
+        ExamSection.deleted_at.is_(None)
+    )
     
     result = await db.execute(query)
     sections = result.scalars().all()
@@ -81,7 +77,8 @@ async def list_sections(
     response_sections = []
     for section in sections:
         count_query = select(func.count(ExamQuestionGroup.id)).where(
-            ExamQuestionGroup.exam_section_id == section.id
+            ExamQuestionGroup.exam_section_id == section.id,
+            ExamQuestionGroup.deleted_at.is_(None)
         )
         count_result = await db.execute(count_query)
         question_groups_count = count_result.scalar()
@@ -91,12 +88,11 @@ async def list_sections(
             "exam_skill_id": section.exam_skill_id,
             "name": section.name,
             "content": section.content,
-            "content_format": section.content_format,
-            "order_index": section.order_index,
-            "audio_file": section.audio_file,
-            "video_file": section.video_file,
             "feedback": section.feedback,
+            "ui_layer": section.ui_layer,
+            "audio": section.audio,
             "created_at": section.created_at,
+            "updated_at": section.updated_at,
             "question_groups_count": question_groups_count
         })
     
@@ -111,7 +107,10 @@ async def get_section(
 ):
     """Get section by ID"""
     result = await db.execute(
-        select(ExamSection).where(ExamSection.id == section_id)
+        select(ExamSection).where(
+            ExamSection.id == section_id,
+            ExamSection.deleted_at.is_(None)
+        )
     )
     section = result.scalar_one_or_none()
     
@@ -123,7 +122,8 @@ async def get_section(
     
     # Get question groups count
     count_query = select(func.count(ExamQuestionGroup.id)).where(
-        ExamQuestionGroup.exam_section_id == section.id
+        ExamQuestionGroup.exam_section_id == section.id,
+        ExamQuestionGroup.deleted_at.is_(None)
     )
     count_result = await db.execute(count_query)
     question_groups_count = count_result.scalar()
@@ -133,12 +133,11 @@ async def get_section(
         "exam_skill_id": section.exam_skill_id,
         "name": section.name,
         "content": section.content,
-        "content_format": section.content_format,
-        "order_index": section.order_index,
-        "audio_file": section.audio_file,
-        "video_file": section.video_file,
         "feedback": section.feedback,
+        "ui_layer": section.ui_layer,
+        "audio": section.audio,
         "created_at": section.created_at,
+        "updated_at": section.updated_at,
         "question_groups_count": question_groups_count
     }
 
@@ -168,11 +167,9 @@ async def create_section(
         exam_skill_id=skill_id,
         name=section_data.name,
         content=section_data.content,
-        content_format=section_data.content_format,
-        order_index=section_data.order_index,
-        audio_file=section_data.audio_file,
-        video_file=section_data.video_file,
         feedback=section_data.feedback,
+        ui_layer=section_data.ui_layer,
+        audio=section_data.audio,
     )
     
     db.add(new_section)
@@ -184,12 +181,11 @@ async def create_section(
         "exam_skill_id": new_section.exam_skill_id,
         "name": new_section.name,
         "content": new_section.content,
-        "content_format": new_section.content_format,
-        "order_index": new_section.order_index,
-        "audio_file": new_section.audio_file,
-        "video_file": new_section.video_file,
         "feedback": new_section.feedback,
+        "ui_layer": new_section.ui_layer,
+        "audio": new_section.audio,
         "created_at": new_section.created_at,
+        "updated_at": new_section.updated_at,
         "question_groups_count": 0
     }
 
@@ -214,27 +210,19 @@ async def update_section(
         )
     
     # Update fields
-    if section_data.name is not None:
-        section.name = section_data.name
-    if section_data.content is not None:
-        section.content = section_data.content
-    if section_data.content_format is not None:
-        section.content_format = section_data.content_format
-    if section_data.order_index is not None:
-        section.order_index = section_data.order_index
-    if section_data.audio_file is not None:
-        section.audio_file = section_data.audio_file
-    if section_data.video_file is not None:
-        section.video_file = section_data.video_file
-    if section_data.feedback is not None:
-        section.feedback = section_data.feedback
+    update_data = section_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(section, field, value)
+    
+    section.updated_at = datetime.utcnow()
     
     await db.commit()
     await db.refresh(section)
     
     # Get question groups count
     count_query = select(func.count(ExamQuestionGroup.id)).where(
-        ExamQuestionGroup.exam_section_id == section.id
+        ExamQuestionGroup.exam_section_id == section.id,
+        ExamQuestionGroup.deleted_at.is_(None)
     )
     count_result = await db.execute(count_query)
     question_groups_count = count_result.scalar()
@@ -244,25 +232,27 @@ async def update_section(
         "exam_skill_id": section.exam_skill_id,
         "name": section.name,
         "content": section.content,
-        "content_format": section.content_format,
-        "order_index": section.order_index,
-        "audio_file": section.audio_file,
-        "video_file": section.video_file,
         "feedback": section.feedback,
+        "ui_layer": section.ui_layer,
+        "audio": section.audio,
         "created_at": section.created_at,
+        "updated_at": section.updated_at,
         "question_groups_count": question_groups_count
     }
 
 
-@router.delete("/sections/{section_id}")
+@router.delete("/sections/{section_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_section(
     section_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Delete section"""
+    """Soft delete section"""
     result = await db.execute(
-        select(ExamSection).where(ExamSection.id == section_id)
+        select(ExamSection).where(
+            ExamSection.id == section_id,
+            ExamSection.deleted_at.is_(None)
+        )
     )
     section = result.scalar_one_or_none()
     
@@ -272,7 +262,7 @@ async def delete_section(
             detail="Section not found"
         )
     
-    await db.delete(section)
+    section.deleted_at = datetime.utcnow()
     await db.commit()
     
-    return {"message": "Section deleted successfully"}
+    return None

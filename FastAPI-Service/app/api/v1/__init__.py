@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, exams, users, questions, generation, grading, upload, skills, sections
+from app.api.v1.endpoints import auth, exams, users, questions, generation, grading, upload, skills, sections, groups
 
 api_router = APIRouter()
 
@@ -17,6 +17,9 @@ api_router.include_router(skills.router, prefix="/skills", tags=["skills"])
 
 # Sections management (SQLAlchemy - ✅ Ready!)
 api_router.include_router(sections.router, tags=["sections"])
+
+# Groups management (SQLAlchemy - ✅ Ready!)
+api_router.include_router(groups.router, tags=["groups"])
 
 # Question management (SQLAlchemy - ✅ Ready!)
 api_router.include_router(questions.router, prefix="/questions", tags=["questions"])

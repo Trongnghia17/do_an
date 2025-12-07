@@ -66,6 +66,16 @@ export const sectionAPI = {
   deleteSection: (sectionId) => api.delete(`/sections/${sectionId}`),
 };
 
+// ========== Question Groups Management ==========
+export const groupAPI = {
+  listGroupsBySection: (sectionId) => api.get(`/sections/${sectionId}/groups`),
+  getGroup: (groupId) => api.get(`/groups/${groupId}`),
+  getQuestionsByGroup: (groupId) => api.get(`/groups/${groupId}/questions`),
+  createGroup: (sectionId, data) => api.post(`/sections/${sectionId}/groups`, data),
+  updateGroup: (groupId, data) => api.put(`/groups/${groupId}`, data),
+  deleteGroup: (groupId) => api.delete(`/groups/${groupId}`),
+};
+
 // ========== AI Generation ==========
 export const aiGenerationAPI = {
   generateQuestions: (data) => api.post('/generation/generate-questions', data),
@@ -106,5 +116,6 @@ export default {
   upload: uploadAPI,
   skill: skillAPI,
   section: sectionAPI,
+  group: groupAPI,
 };
 
