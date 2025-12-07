@@ -15,7 +15,6 @@ import {
   EditOutlined,
   BookOutlined,
 } from '@ant-design/icons';
-import SkillManagement from '../components/SkillManagement';
 
 const { TabPane } = Tabs;
 

@@ -2,7 +2,6 @@ import AdminLayout from '../components/AdminLayout';
 import AdminDashboard from '../pages/AdminDashboard';
 import UserManagement from '../pages/UserManagement';
 import ExamManagement from '../pages/ExamManagement';
-import RoleManagement from '../pages/RoleManagement';
 import ProtectedAdminRoute from '../components/ProtectedAdminRoute';
 
 const adminRoutes = {
@@ -23,10 +22,6 @@ const adminRoutes = {
         {
           path: 'exams',
           element: <ExamManagement />,
-        },
-        {
-          path: 'roles',
-          element: <RoleManagement />,
         },
         {
           path: 'analytics',

@@ -37,10 +37,6 @@ import ExamDetail from '@/features/admin/pages/ExamDetail';
 import TestDetail from '@/features/admin/pages/TestDetail';
 import SkillManagement from '@/features/admin/pages/SkillManagement';
 import SkillDetail from '@/features/admin/pages/SkillDetail';
-import SectionManagement from '@/features/admin/pages/SectionManagement';
-import QuestionGroupManagement from '@/features/admin/pages/QuestionGroupManagement';
-import QuestionManagement from '@/features/admin/pages/QuestionManagement';
-import RoleManagement from '@/features/admin/pages/RoleManagement';
 
 const PublicShell = (
   <MainLayout />
@@ -164,9 +160,6 @@ export const router = createBrowserRouter([
           { path: 'exams/:examId/tests/:testId/skills', element: <SkillManagement /> },
           { path: 'skills', element: <SkillManagement /> },
           { path: 'skills/:skillId', element: <SkillDetail /> },
-          { path: 'skills/:skillId/sections/:sectionId/groups', element: <QuestionGroupManagement /> },
-          { path: 'skills/:skillId/sections/:sectionId/groups/:groupId/questions', element: <QuestionManagement /> },
-          { path: 'roles', element: <RoleManagement /> },
           { 
             path: 'analytics', 
             element: <div style={{ padding: 24 }}><h1>Analytics (Coming Soon)</h1></div> 

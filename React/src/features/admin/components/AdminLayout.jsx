@@ -55,11 +55,6 @@ const AdminLayout = () => {
       label: 'Quản lý đề thi',
     },
     {
-      key: '/admin/roles',
-      icon: <SafetyOutlined />,
-      label: 'Phân quyền',
-    },
-    {
       key: '/admin/analytics',
       icon: <BarChartOutlined />,
       label: 'Thống kê',
