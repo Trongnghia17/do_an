@@ -7,7 +7,7 @@ from datetime import datetime
 
 from app.models.exam_models import ExamQuestionGroup, ExamSection, ExamQuestion
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, get_optional_user
 from app.models.auth_models import User
 
 router = APIRouter()
@@ -98,9 +98,9 @@ async def list_groups_by_section(
 async def get_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get question group by ID"""
+    """Get question group by ID (public endpoint - auth optional)"""
     result = await db.execute(
         select(ExamQuestionGroup)
         .where(ExamQuestionGroup.id == group_id)
@@ -138,9 +138,9 @@ async def get_group(
 async def get_questions_by_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get all questions for a question group"""
+    """Get all questions for a question group (public endpoint - auth optional)"""
     # Check if group exists
     result = await db.execute(
         select(ExamQuestionGroup)

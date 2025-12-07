@@ -71,6 +71,33 @@ async def get_current_active_user(
     return current_user
 
 
+async def get_optional_user(token: Optional[str] = Depends(OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False))) -> Optional[User]:
+    """Get current user from JWT token (optional - returns None if no token)"""
+    if not token:
+        return None
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+    
+    # Fetch user from SQLAlchemy DB
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).where(User.id == int(user_id)))
+        user = result.scalar_one_or_none()
+
+    if user is None or getattr(user, "deleted_at", None) is not None:
+        return None
+
+    if not user.is_active:
+        return None
+
+    return user
+
+
 # Permission system removed — keep role-based dependency only
 
 

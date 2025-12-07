@@ -62,22 +62,22 @@ export default function OnlineExamLibrary() {
         per_page: perPage
       });
 
-      if (response.data.success) {
-        const responseData = response.data.data;
-        const skillsData = responseData.data || responseData;
-        
-        setSkills(skillsData);
-        
-        // Set pagination data if available
-        if (responseData.current_page) {
-          setCurrentPage(responseData.current_page);
-          setTotalPages(responseData.last_page);
-          setTotalItems(responseData.total);
-          setPerPage(responseData.per_page);
-        }
-      }
+      console.log('API Response:', response.data); // Debug log
+
+      // FastAPI trả về trực tiếp array, không có wrapper success/data
+      const skillsData = Array.isArray(response.data) ? response.data : [];
+      
+      console.log('Skills data to display:', skillsData); // Debug log
+      setSkills(skillsData);
+      
+      // FastAPI không có pagination metadata trong response
+      // Tạm thời disable pagination hoặc cần cập nhật backend để trả về metadata
+      setTotalPages(1);
+      setTotalItems(skillsData.length);
+      
     } catch (error) {
       console.error('Error fetching skills:', error);
+      setSkills([]);
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,8 @@ export default function OnlineExamLibrary() {
   const filteredSkills = skills.filter(skill => {
     // Search filter
     const matchesSearch = skill.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      skill.exam_test?.exam?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      skill.exam_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      skill.exam_test_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Skill type filter
     const matchesSkillType = filters.skillType.length === 0 ||
@@ -126,6 +127,8 @@ export default function OnlineExamLibrary() {
     }
   });
 
+  console.log('Filtered skills:', filteredSkills.length, 'Sorted skills:', sortedSkills.length); // Debug log
+
   const handleFilterChange = (filterType, value) => {
     setFilters(prev => ({
       ...prev,
@@ -154,7 +157,10 @@ export default function OnlineExamLibrary() {
       if (image.startsWith('http')) {
         return image;
       }
-      return `${import.meta.env.VITE_API_BASE_URL}/storage/${image}`;
+      // API trả về path như: /uploads/... hoặc uploads/...
+      // Cần build full URL với backend base
+      const imagePath = image.startsWith('/') ? image : `/${image}`;
+      return `${import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000'}${imagePath}`;
     }
 
     // Default placeholder based on skill type
@@ -521,14 +527,17 @@ export default function OnlineExamLibrary() {
                     className="online-exam-library__card"
                     onClick={() => handleSkillClick(skill)}
                   >
-                    <img
-                      src={getSkillImage(skill)}
-                      alt={skill.name}
-                      className="online-exam-library__card-image"
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/280x180/6366f1/ffffff?text=No+Image';
-                      }}
-                    />
+                    <div className="online-exam-library__card-image-wrapper">
+                      <img
+                        src={getSkillImage(skill)}
+                        alt={skill.name}
+                        className="online-exam-library__card-image"
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/280x180/6366f1/ffffff?text=No+Image';
+                        }}
+                      />
+                      
+                    </div>
                     <div className="online-exam-library__card-content">
                       <h3 className="online-exam-library__card-title">{skill.name}</h3>
                       <p className="online-exam-library__card-subtitle">

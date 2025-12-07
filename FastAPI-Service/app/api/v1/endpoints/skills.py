@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
 from app.models.exam_models import ExamSkill, ExamTest, Exam, SkillType
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, get_optional_user
 from app.models.auth_models import User
 
 router = APIRouter()
@@ -58,16 +58,21 @@ class SkillUpdateRequest(BaseModel):
 
 @router.get("/", response_model=List[SkillResponse])
 async def list_skills(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     skill_type: Optional[str] = Query(None),
     exam_id: Optional[int] = Query(None),
     exam_test_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
+    is_online: Optional[bool] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """List all skills with filters"""
+    """List all skills with filters (public endpoint - auth optional)"""
+    # Calculate pagination
+    skip = (page - 1) * per_page
+    limit = per_page
+    
     if limit > 100:
         limit = 100
     
@@ -85,6 +90,9 @@ async def list_skills(
     
     if search:
         query = query.where(ExamSkill.name.ilike(f"%{search}%"))
+    
+    if is_online is not None:
+        query = query.where(ExamSkill.is_online == is_online)
     
     query = query.offset(skip).limit(limit).order_by(ExamSkill.created_at.desc())
     
@@ -124,9 +132,9 @@ async def list_skills(
 async def get_skill(
     skill_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get skill by ID"""
+    """Get skill by ID (public endpoint - auth optional)"""
     result = await db.execute(
         select(ExamSkill)
         .where(ExamSkill.id == skill_id)

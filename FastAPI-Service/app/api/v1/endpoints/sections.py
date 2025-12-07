@@ -7,7 +7,7 @@ from datetime import datetime
 
 from app.models.exam_models import ExamSection, ExamSkill, ExamQuestionGroup
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, get_optional_user
 from app.models.auth_models import User
 
 router = APIRouter()
@@ -103,9 +103,9 @@ async def list_sections(
 async def get_section(
     section_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get section by ID"""
+    """Get section by ID (public endpoint - auth optional)"""
     result = await db.execute(
         select(ExamSection).where(
             ExamSection.id == section_id,
