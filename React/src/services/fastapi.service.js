@@ -20,6 +20,8 @@ export const userAPI = {
   listUsers: (params) => api.get('/users', { params }),
   getUser: (userId) => api.get(`/users/${userId}`),
   getUserStats: () => api.get('/users/stats/summary'),
+  updateUser: (userId, data) => api.put(`/users/${userId}`, data),
+  deleteUser: (userId) => api.delete(`/users/${userId}`),
 };
 
 // ========== Exam Management ==========
@@ -29,7 +31,12 @@ export const examAPI = {
   createExam: (data) => api.post('/exams', data),
   updateExam: (examId, data) => api.put(`/exams/${examId}`, data),
   deleteExam: (examId) => api.delete(`/exams/${examId}`),
+  
+  // Exam Tests
   getExamTests: (examId) => api.get(`/exams/${examId}/tests`),
+  createExamTest: (examId, data) => api.post(`/exams/${examId}/tests`, data),
+  updateExamTest: (examId, testId, data) => api.put(`/exams/${examId}/tests/${testId}`, data),
+  deleteExamTest: (examId, testId) => api.delete(`/exams/${examId}/tests/${testId}`),
 };
 
 // ========== Question Management ==========
@@ -39,6 +46,34 @@ export const questionAPI = {
   createQuestion: (data) => api.post('/questions', data),
   updateQuestion: (questionId, data) => api.put(`/questions/${questionId}`, data),
   deleteQuestion: (questionId) => api.delete(`/questions/${questionId}`),
+};
+
+// ========== Skills Management ==========
+export const skillAPI = {
+  listSkills: (params) => api.get('/skills', { params }),
+  getSkill: (skillId) => api.get(`/skills/${skillId}`),
+  createSkill: (data) => api.post('/skills', data),
+  updateSkill: (skillId, data) => api.put(`/skills/${skillId}`, data),
+  deleteSkill: (skillId) => api.delete(`/skills/${skillId}`),
+};
+
+// ========== Sections Management ==========
+export const sectionAPI = {
+  listSections: (skillId) => api.get(`/skills/${skillId}/sections`),
+  getSection: (sectionId) => api.get(`/sections/${sectionId}`),
+  createSection: (skillId, data) => api.post(`/skills/${skillId}/sections`, data),
+  updateSection: (sectionId, data) => api.put(`/sections/${sectionId}`, data),
+  deleteSection: (sectionId) => api.delete(`/sections/${sectionId}`),
+};
+
+// ========== Question Groups Management ==========
+export const groupAPI = {
+  listGroupsBySection: (sectionId) => api.get(`/sections/${sectionId}/groups`),
+  getGroup: (groupId) => api.get(`/groups/${groupId}`),
+  getQuestionsByGroup: (groupId) => api.get(`/groups/${groupId}/questions`),
+  createGroup: (sectionId, data) => api.post(`/sections/${sectionId}/groups`, data),
+  updateGroup: (groupId, data) => api.put(`/groups/${groupId}`, data),
+  deleteGroup: (groupId) => api.delete(`/groups/${groupId}`),
 };
 
 // ========== AI Generation ==========
@@ -56,6 +91,20 @@ export const aiGradingAPI = {
   gradeBatch: (data) => api.post('/grading/grade-batch', data),
 };
 
+// ========== File Upload ==========
+export const uploadAPI = {
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/upload/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  deleteImage: (filename) => api.delete('/upload/image', { params: { filename } }),
+};
+
 // Export all as default
 export default {
   auth: authAPI,
@@ -64,4 +113,9 @@ export default {
   question: questionAPI,
   aiGeneration: aiGenerationAPI,
   aiGrading: aiGradingAPI,
+  upload: uploadAPI,
+  skill: skillAPI,
+  section: sectionAPI,
+  group: groupAPI,
 };
+

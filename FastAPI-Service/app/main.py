@@ -59,7 +59,7 @@ app.add_middleware(
 )
 
 # Static files (for uploads, etc.)
-# app.mount("/static", StaticFiles(directory="storage/public"), name="static")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Include API routes
 app.include_router(api_router, prefix=f"/api/{settings.API_VERSION}")

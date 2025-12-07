@@ -1,15 +1,24 @@
 .admin-logo {
-  height: 64px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 20px;
-  font-weight: bold;
+  padding: 0 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s;
 }
 
+.admin-logo__img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  transition: all 0.2s;
+}
+
+.admin-logo__img-collapsed {
+  height: 32px;
+}
+
 .admin-logo:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
 }

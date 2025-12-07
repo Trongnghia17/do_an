@@ -12,7 +12,6 @@ from app.database import Base
 
 class ExamType(str, enum.Enum):
     """Exam type enum"""
-    ONLINE = "online"
     IELTS = "ielts"
     TOEIC = "toeic"
 
@@ -31,7 +30,7 @@ class Exam(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(255), nullable=False)  # IELTS Academic, TOEIC Practice
-    type = Column(SQLEnum(ExamType), default=ExamType.ONLINE, nullable=False)
+    type = Column(SQLEnum(ExamType), default=ExamType.IELTS, nullable=False)
     description = Column(Text, nullable=True)
     image = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -80,6 +79,7 @@ class ExamSkill(Base):
     time_limit = Column(Integer, nullable=True)  # Thời gian làm bài (phút)
     image = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_online = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -99,10 +99,10 @@ class ExamSection(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     exam_skill_id = Column(Integer, ForeignKey("exam_skills.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)  # Section 1, Part A
-    description = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)  # Nội dung hướng dẫn cho section
+    feedback = Column(Text, nullable=True)  # Phản hồi cho section
     ui_layer = Column(String(255), nullable=True)  # UI layer cho section
-    order = Column(Integer, default=0, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    audio = Column(String(255), nullable=True)  # Audio file URL
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -122,13 +122,8 @@ class ExamQuestionGroup(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     exam_section_id = Column(Integer, ForeignKey("exam_sections.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)  # Question 1-5, Passage 1
-    description = Column(Text, nullable=True)
+    question_type = Column(String(50), nullable=False)  # multipleChoice, trueFalse, fillInTheBlank
     content = Column(Text, nullable=True)  # Nội dung đoạn văn/hội thoại
-    image = Column(String(255), nullable=True)
-    audio = Column(String(255), nullable=True)
-    video = Column(String(255), nullable=True)
-    order = Column(Integer, default=0, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -152,11 +147,7 @@ class ExamQuestion(Base):
     options = Column(Text, nullable=True)  # JSON string of options
     correct_answer = Column(Text, nullable=True)
     explanation = Column(Text, nullable=True)
-    image = Column(String(255), nullable=True)
-    audio = Column(String(255), nullable=True)
-    order = Column(Integer, default=0, nullable=False)
     points = Column(Integer, default=1, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

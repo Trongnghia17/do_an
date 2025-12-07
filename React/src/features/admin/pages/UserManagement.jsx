@@ -18,6 +18,7 @@ import {
   DeleteOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import adminService from '../services/adminService';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -37,41 +38,23 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await adminService.getUsers();
+      const data = await adminService.getUsers();
       
-      // Mock data for now
-      setTimeout(() => {
-        setUsers([
-          {
-            id: '1',
-            name: 'John Doe',
-            email: 'john@example.com',
-            role: 'admin',
-            isActive: true,
-            createdAt: '2024-01-01',
-          },
-          {
-            id: '2',
-            name: 'Jane Smith',
-            email: 'jane@example.com',
-            role: 'user',
-            isActive: true,
-            createdAt: '2024-01-02',
-          },
-          {
-            id: '3',
-            name: 'Bob Johnson',
-            email: 'bob@example.com',
-            role: 'user',
-            isActive: false,
-            createdAt: '2024-01-03',
-          },
-        ]);
-        setLoading(false);
-      }, 1000);
+      // Transform API data to match table structure
+      const transformedUsers = data.map(user => ({
+        id: user.id,
+        name: user.name || 'N/A',
+        email: user.email,
+        role: user.role_id === 1 ? 'admin' : 'student',
+        isActive: user.is_active,
+        createdAt: new Date(user.created_at).toLocaleDateString(),
+      }));
+      
+      setUsers(transformedUsers);
     } catch (error) {
-      message.error('Failed to fetch users');
+      console.error('Error fetching users:', error);
+      message.error('Không thể tải danh sách người dùng');
+    } finally {
       setLoading(false);
     }
   };
@@ -84,45 +67,62 @@ const UserManagement = () => {
 
   const handleEdit = (record) => {
     setEditingUser(record);
-    form.setFieldsValue(record);
+    // Set form values with proper mapping
+    form.setFieldsValue({
+      name: record.name,
+      email: record.email,
+      role: record.role,
+      isActive: record.isActive,
+    });
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
     try {
-      // TODO: Replace with actual API call
-      // await adminService.deleteUser(id);
-      
-      message.success('User deleted successfully');
+      await adminService.deleteUser(id);
+      message.success('Xóa người dùng thành công');
       fetchUsers();
     } catch (error) {
-      message.error('Failed to delete user');
+      console.error('Error deleting user:', error);
+      message.error(error.response?.data?.detail || 'Không thể xóa người dùng');
     }
   };
 
   const handleSubmit = async (values) => {
     try {
+      // Transform role to role_id (1 = admin, 2 = student)
+      const userData = {
+        name: values.name,
+        email: values.email,
+        is_active: values.isActive,
+        role_id: values.role === 'admin' ? 1 : 2,
+      };
+
       if (editingUser) {
-        // TODO: Replace with actual API call
-        // await adminService.updateUser(editingUser.id, values);
-        message.success('User updated successfully');
+        await adminService.updateUser(editingUser.id, userData);
+        message.success('Cập nhật người dùng thành công');
       } else {
-        // TODO: Replace with actual API call
-        // await adminService.createUser(values);
-        message.success('User created successfully');
+        // For create, we need password
+        const createData = {
+          ...userData,
+          password: values.password,
+        };
+        await adminService.createUser(createData);
+        message.success('Thêm người dùng thành công');
       }
       
       setIsModalOpen(false);
       form.resetFields();
       fetchUsers();
     } catch (error) {
-      message.error('Failed to save user');
+      console.error('Error saving user:', error);
+      message.error(error.response?.data?.detail || 'Không thể lưu thông tin người dùng');
     }
   };
 
   const columns = [
     {
-      title: 'Name',
+      title: 'Tên',
       dataIndex: 'name',
       key: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
@@ -133,43 +133,43 @@ const UserManagement = () => {
       key: 'email',
     },
     {
-      title: 'Role',
+      title: 'Vai trò',
       dataIndex: 'role',
       key: 'role',
       render: (role) => (
         <Tag color={role === 'admin' ? 'red' : 'blue'}>
-          {role.toUpperCase()}
+          {role === 'admin' ? 'QUẢN TRỊ' : 'HỌC VIÊN'}
         </Tag>
       ),
       filters: [
-        { text: 'Admin', value: 'admin' },
-        { text: 'User', value: 'user' },
+        { text: 'Quản trị', value: 'admin' },
+        { text: 'Học viên', value: 'student' },
       ],
       onFilter: (value, record) => record.role === value,
     },
     {
-      title: 'Status',
+      title: 'Trạng thái',
       dataIndex: 'isActive',
       key: 'isActive',
       render: (isActive) => (
         <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Active' : 'Inactive'}
+          {isActive ? 'Đang hoạt động' : 'Ngưng hoạt động'}
         </Tag>
       ),
       filters: [
-        { text: 'Active', value: true },
-        { text: 'Inactive', value: false },
+        { text: 'Đang hoạt động', value: true },
+        { text: 'Ngưng hoạt động', value: false },
       ],
       onFilter: (value, record) => record.isActive === value,
     },
     {
-      title: 'Created At',
+      title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
       sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
     },
     {
-      title: 'Actions',
+      title: 'Thao tác',
       key: 'actions',
       render: (_, record) => (
         <Space size="small">
@@ -178,21 +178,21 @@ const UserManagement = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Edit
+            Sửa
           </Button>
           <Popconfirm
-            title="Delete user"
-            description="Are you sure you want to delete this user?"
+            title="Xóa người dùng"
+            description="Bạn có chắc chắn muốn xóa người dùng này?"
             onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            okText="Có"
+            cancelText="Không"
           >
             <Button
               type="link"
               danger
               icon={<DeleteOutlined />}
             >
-              Delete
+              Xóa
             </Button>
           </Popconfirm>
         </Space>
@@ -208,19 +208,19 @@ const UserManagement = () => {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <h1>User Management</h1>
+        <h1>Quản lý người dùng</h1>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleCreate}
         >
-          Add User
+          Thêm người dùng
         </Button>
       </div>
 
       <div style={{ marginBottom: 16 }}>
         <Search
-          placeholder="Search users by name or email"
+          placeholder="Tìm kiếm theo tên hoặc email"
           allowClear
           enterButton={<SearchOutlined />}
           size="large"
@@ -238,15 +238,36 @@ const UserManagement = () => {
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
-          showTotal: (total) => `Total ${total} users`,
+          showTotal: (total) => `Tổng số ${total} người dùng`,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          showQuickJumper: true,
+          locale: {
+            items_per_page: '/ trang',
+            jump_to: 'Đi đến',
+            jump_to_confirm: 'xác nhận',
+            page: 'Trang',
+            prev_page: 'Trang trước',
+            next_page: 'Trang sau',
+            prev_5: '5 trang trước',
+            next_5: '5 trang sau',
+            prev_3: '3 trang trước',
+            next_3: '3 trang sau',
+          },
+        }}
+        locale={{
+          filterConfirm: 'Lọc',
+          filterReset: 'Đặt lại',
+          emptyText: 'Không có dữ liệu',
         }}
       />
 
       <Modal
-        title={editingUser ? 'Edit User' : 'Create User'}
+        title={editingUser ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={() => form.submit()}
+        okText={editingUser ? 'Cập nhật' : 'Thêm'}
+        cancelText="Hủy"
         width={600}
       >
         <Form
@@ -256,51 +277,50 @@ const UserManagement = () => {
         >
           <Form.Item
             name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Please input user name!' }]}
+            label="Họ và tên"
+            rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}
           >
-            <Input placeholder="Enter user name" />
+            <Input placeholder="Nhập họ và tên" />
           </Form.Item>
 
           <Form.Item
             name="email"
             label="Email"
             rules={[
-              { required: true, message: 'Please input email!' },
-              { type: 'email', message: 'Please enter a valid email!' },
+              { required: true, message: 'Vui lòng nhập email!' },
+              { type: 'email', message: 'Email không hợp lệ!' },
             ]}
           >
-            <Input placeholder="Enter email" />
+            <Input placeholder="Nhập địa chỉ email" />
           </Form.Item>
 
           {!editingUser && (
             <Form.Item
               name="password"
-              label="Password"
+              label="Mật khẩu"
               rules={[
-                { required: true, message: 'Please input password!' },
-                { min: 6, message: 'Password must be at least 6 characters!' },
+                { required: true, message: 'Vui lòng nhập mật khẩu!' },
+                { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' },
               ]}
             >
-              <Input.Password placeholder="Enter password" />
+              <Input.Password placeholder="Nhập mật khẩu" />
             </Form.Item>
           )}
 
           <Form.Item
             name="role"
-            label="Role"
-            rules={[{ required: true, message: 'Please select role!' }]}
+            label="Vai trò"
+            rules={[{ required: true, message: 'Vui lòng chọn vai trò!' }]}
           >
-            <Select placeholder="Select role">
-              <Option value="user">User</Option>
-              <Option value="admin">Admin</Option>
-              <Option value="super_admin">Super Admin</Option>
+            <Select placeholder="Chọn vai trò">
+              <Option value="student">Học viên</Option>
+              <Option value="admin">Quản trị</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
             name="isActive"
-            label="Active"
+            label="Trạng thái hoạt động"
             valuePropName="checked"
             initialValue={true}
           >
