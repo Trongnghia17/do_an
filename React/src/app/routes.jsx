@@ -161,7 +161,7 @@ export const router = createBrowserRouter([
           { path: 'users', element: <UserManagement /> },
           { path: 'exams', element: <ExamManagement /> },
           { path: 'exams/:examId', element: <ExamDetail /> },
-          { path: 'exams/:examId/tests/:testId', element: <TestDetail /> },
+          { path: 'exams/:examId/tests/:testId/skills', element: <SkillManagement /> },
           { path: 'skills', element: <SkillManagement /> },
           { path: 'skills/:skillId', element: <SkillDetail /> },
           { path: 'skills/:skillId/sections/:sectionId/groups', element: <QuestionGroupManagement /> },

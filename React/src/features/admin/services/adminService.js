@@ -239,6 +239,16 @@ const adminService = {
     const response = await fastapiService.upload.deleteImage(filename);
     return response.data;
   },
+
+  uploadAudio: async (file) => {
+    const response = await fastapiService.upload.uploadAudio(file);
+    return response.data;
+  },
+
+  deleteAudio: async (filename) => {
+    const response = await fastapiService.upload.deleteAudio(filename);
+    return response.data;
+  },
 };
 
 export default adminService;

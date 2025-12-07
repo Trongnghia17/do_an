@@ -103,6 +103,17 @@ export const uploadAPI = {
     });
   },
   deleteImage: (filename) => api.delete('/upload/image', { params: { filename } }),
+  
+  uploadAudio: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/upload/audio', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  deleteAudio: (filename) => api.delete('/upload/audio', { params: { filename } }),
 };
 
 // Export all as default
@@ -117,5 +128,6 @@ export default {
   skill: skillAPI,
   section: sectionAPI,
   group: groupAPI,
+  client: api, // Export raw client for custom requests
 };
 

@@ -118,13 +118,9 @@ const QuestionGroupManagement = ({ sectionId }) => {
 
   const questionTypeColors = {
     multiple_choice: 'blue',
+    short_text: 'purple',
     yes_no_not_given: 'green',
     true_false_not_given: 'orange',
-    short_text: 'purple',
-    fill_in_blank: 'cyan',
-    matching: 'magenta',
-    essay: 'red',
-    speaking: 'volcano',
   };
 
   return (
@@ -234,14 +230,9 @@ const QuestionGroupManagement = ({ sectionId }) => {
           >
             <Select placeholder="Select question type">
               <Option value="multiple_choice">Multiple Choice</Option>
+              <Option value="short_text">Short Text</Option>
               <Option value="yes_no_not_given">Yes/No/Not Given</Option>
               <Option value="true_false_not_given">True/False/Not Given</Option>
-              <Option value="short_text">Short Text</Option>
-              <Option value="fill_in_blank">Fill in the Blank</Option>
-              <Option value="matching">Matching</Option>
-              <Option value="table_selection">Table Selection</Option>
-              <Option value="essay">Essay</Option>
-              <Option value="speaking">Speaking</Option>
             </Select>
           </Form.Item>
 

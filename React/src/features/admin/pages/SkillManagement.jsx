@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Card,
   Table,
@@ -27,7 +27,8 @@ import {
   UploadOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
-  LoadingOutlined
+  LoadingOutlined,
+  ArrowLeftOutlined
 } from '@ant-design/icons';
 import adminService from '../services/adminService';
 import fastapiService from '@/services/fastapi.service';
@@ -37,6 +38,7 @@ const { Option } = Select;
 
 const SkillManagement = () => {
   const navigate = useNavigate();
+  const { examId, testId } = useParams();
   const [skills, setSkills] = useState([]);
   const [exams, setExams] = useState([]);
   const [tests, setTests] = useState([]);
@@ -50,13 +52,28 @@ const SkillManagement = () => {
   // Filter states
   const [searchText, setSearchText] = useState('');
   const [filterSkillType, setFilterSkillType] = useState('');
-  const [filterExamId, setFilterExamId] = useState('');
-  const [filterTestId, setFilterTestId] = useState('');
+  const [filterExamId, setFilterExamId] = useState(examId ? parseInt(examId) : '');
+  const [filterTestId, setFilterTestId] = useState(testId ? parseInt(testId) : '');
 
   useEffect(() => {
-    fetchExams();
-    fetchSkills();
+    const loadData = async () => {
+      await fetchExams();
+      // Auto-load tests if examId from URL
+      if (examId) {
+        await fetchTests(parseInt(examId));
+      }
+      // Fetch skills after exams/tests loaded
+      fetchSkills();
+    };
+    loadData();
   }, []);
+
+  useEffect(() => {
+    // Refetch skills when filters change (but not on initial load)
+    if (exams.length > 0) {
+      fetchSkills();
+    }
+  }, [searchText, filterSkillType, filterExamId, filterTestId]);
 
   useEffect(() => {
     if (filterExamId) {
@@ -70,7 +87,12 @@ const SkillManagement = () => {
   const fetchExams = async () => {
     try {
       const data = await adminService.getExams();
-      setExams(data);
+      // Ensure ID is number
+      const normalizedData = data.map(exam => ({
+        ...exam,
+        id: parseInt(exam.id)
+      }));
+      setExams(normalizedData);
     } catch (error) {
       console.error('Error fetching exams:', error);
       message.error('Tải danh sách bộ đề thất bại');
@@ -80,7 +102,12 @@ const SkillManagement = () => {
   const fetchTests = async (examId) => {
     try {
       const data = await adminService.getTestsByExamId(examId);
-      setTests(data);
+      // Ensure ID is number
+      const normalizedData = data.map(test => ({
+        ...test,
+        id: parseInt(test.id)
+      }));
+      setTests(normalizedData);
     } catch (error) {
       console.error('Error fetching tests:', error);
       message.error('Tải danh sách nhóm đề thất bại');
@@ -449,7 +476,17 @@ const SkillManagement = () => {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>Quản lý đề thi</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {examId && testId && (
+            <Button 
+              icon={<ArrowLeftOutlined />} 
+              onClick={() => navigate(`/admin/exams/${examId}`)}
+            >
+              Quay lại
+            </Button>
+          )}
+          <h2 style={{ margin: 0 }}>Quản lý đề thi</h2>
+        </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           Thêm đề thi mới
         </Button>

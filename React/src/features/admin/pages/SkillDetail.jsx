@@ -64,6 +64,18 @@ const SkillDetail = () => {
   // Get examId and testId from state if passed from navigation
   const { examId, testId } = location.state || {};
 
+  // Helper function to convert relative URL to absolute URL
+  const getFullAudioUrl = (audioPath) => {
+    if (!audioPath) return null;
+    // If already a full URL, return as is
+    if (audioPath.startsWith('http://') || audioPath.startsWith('https://')) {
+      return audioPath;
+    }
+    // Otherwise, prepend FastAPI URL
+    const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000';
+    return `${FASTAPI_URL}${audioPath}`;
+  };
+
   // Toggle section collapse
   const toggleSection = (sectionIndex) => {
     setCollapsedSections(prev => ({
@@ -150,7 +162,7 @@ const SkillDetail = () => {
         content: section.content,
         feedback: section.feedback,
         uiLayer: section.ui_layer || 'default',
-        audio: section.audio,
+        audio: getFullAudioUrl(section.audio),
         questionGroupsCount: section.question_groups_count
       }));
       
@@ -314,7 +326,7 @@ const SkillDetail = () => {
       id: `new-${Date.now()}`,
       name: '',
       content: '',
-      questionType: 'multipleChoice',
+      questionType: 'multiple_choice',
       questionCount: 0,
       isNew: true
     };
@@ -455,6 +467,24 @@ const SkillDetail = () => {
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
         try {
+          let audioUrl = section.audio;
+          
+          // Upload audio file if exists
+          if (section.audioFile) {
+            try {
+              console.log('Uploading audio file:', section.audioFile.name);
+              const uploadResult = await adminService.uploadAudio(section.audioFile);
+              audioUrl = uploadResult.url;
+              console.log('Audio uploaded successfully:', audioUrl);
+              message.success(`Audio file uploaded: ${section.audioFile.name}`);
+            } catch (uploadError) {
+              console.error('Error uploading audio:', uploadError);
+              message.error(`Failed to upload audio: ${uploadError.message}`);
+              errorCount++;
+              continue; // Skip this section if audio upload fails
+            }
+          }
+          
           if (section.isNew) {
             // Create new section
             const newSection = await adminService.createSection(skillId, {
@@ -462,12 +492,15 @@ const SkillDetail = () => {
               content: section.content,
               feedback: section.feedback,
               ui_layer: section.uiLayer,
-              audio: section.audio
+              audio: audioUrl || null
             });
             console.log('Created section:', newSection);
-            // Update section with new ID
+            // Update section with new ID and convert audio URL to full URL
             sections[i].id = newSection.id;
             sections[i].isNew = false;
+            sections[i].audio = getFullAudioUrl(audioUrl);
+            sections[i].audioFile = null;
+            sections[i].audioPreview = null;
           } else {
             // Update existing section
             await adminService.updateSection(section.id, {
@@ -475,9 +508,12 @@ const SkillDetail = () => {
               content: section.content,
               feedback: section.feedback,
               ui_layer: section.uiLayer,
-              audio: section.audio
+              audio: audioUrl || null
             });
             console.log('Updated section:', section.id);
+            sections[i].audio = getFullAudioUrl(audioUrl);
+            sections[i].audioFile = null;
+            sections[i].audioPreview = null;
           }
           savedCount++;
         } catch (error) {
@@ -498,7 +534,7 @@ const SkillDetail = () => {
               // Create new group
               const newGroup = await adminService.createGroup(section.id, {
                 name: group.name || `Group ${gIndex + 1}`,
-                question_type: group.questionType || 'multipleChoice',
+                question_type: group.questionType || 'multiple_choice',
                 content: group.content
               });
               console.log('Created group:', newGroup);
@@ -509,7 +545,7 @@ const SkillDetail = () => {
               // Update existing group
               await adminService.updateGroup(group.id, {
                 name: group.name || `Group ${gIndex + 1}`,
-                question_type: group.questionType || 'multipleChoice',
+                question_type: group.questionType || 'multiple_choice',
                 content: group.content
               });
               console.log('Updated group:', group.id);
@@ -975,22 +1011,72 @@ const SkillDetail = () => {
                       </Select>
                     </div>
 
-                    {/* Audio File URL */}
-                    <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                        Audio File URL
-                      </label>
-                      <Input
-                        value={section.audio || ''}
-                        onChange={(e) => updateSection(selectedSection, 'audio', e.target.value)}
-                        placeholder="Enter audio file URL (optional)"
-                      />
-                      {section.audio && (
-                        <audio controls style={{ width: '100%', marginTop: 8 }}>
-                          <source src={section.audio} />
-                        </audio>
-                      )}
-                    </div>
+                    {/* Audio File - Only for Listening skill */}
+                    {skill.skillType === 'listening' && (
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                          Audio File
+                        </label>
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                          <Upload
+                            accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
+                            maxCount={1}
+                            fileList={section.audioFile ? [{
+                              uid: '-1',
+                              name: section.audioFile.name || 'audio.mp3',
+                              status: 'done',
+                            }] : []}
+                            beforeUpload={(file) => {
+                              // Validate file size (50MB max)
+                              const maxSize = 50 * 1024 * 1024;
+                              if (file.size > maxSize) {
+                                message.error('File size must be less than 50MB!');
+                                return false;
+                              }
+                              
+                              // Create a preview URL for the uploaded file
+                              const audioUrl = URL.createObjectURL(file);
+                              updateSection(selectedSection, 'audioPreview', audioUrl);
+                              updateSection(selectedSection, 'audioFile', file);
+                              message.success(`${file.name} selected. Will upload when you save.`);
+                              return false; // Prevent auto upload
+                            }}
+                            onRemove={() => {
+                              updateSection(selectedSection, 'audio', '');
+                              updateSection(selectedSection, 'audioFile', null);
+                              updateSection(selectedSection, 'audioPreview', null);
+                            }}
+                          >
+                            <Button icon={<UploadOutlined />}>Select Audio File</Button>
+                          </Upload>
+                          
+                          <div style={{ fontSize: 12, color: '#999' }}>
+                            Supported: MP3, WAV, OGG, M4A, AAC, FLAC (Max 50MB)
+                          </div>
+                          
+                          <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
+                            Or enter audio URL:
+                          </div>
+                          <Input
+                            value={section.audio && !section.audioFile ? section.audio : ''}
+                            onChange={(e) => {
+                              updateSection(selectedSection, 'audio', e.target.value);
+                              updateSection(selectedSection, 'audioFile', null);
+                              updateSection(selectedSection, 'audioPreview', null);
+                            }}
+                            placeholder="https://example.com/audio.mp3"
+                            disabled={!!section.audioFile}
+                          />
+                          
+                          {(section.audioPreview || section.audio) && (
+                            <audio controls style={{ width: '100%', marginTop: 8 }}>
+                              <source src={section.audioPreview || section.audio} />
+                              Your browser does not support the audio element.
+                            </audio>
+                          )}
+                        </Space>
+                      </div>
+                    )}
 
                     <Divider />
 
@@ -1128,7 +1214,6 @@ const SkillDetail = () => {
                           <Option value="short_text">Short Text</Option>
                           <Option value="yes_no_not_given">Yes/No/Not Given</Option>
                           <Option value="true_false_not_given">True/False/Not Given</Option>
-                          <Option value="fill_blank">Fill in the Blank</Option>
                         </Select>
                       </div>
                       <div style={{ flex: 1 }}>
@@ -1310,15 +1395,14 @@ const SkillDetail = () => {
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Question Type</label>
                       <Select
-                        value={group.questionType || 'multipleChoice'}
+                        value={group.questionType || 'multiple_choice'}
                         onChange={(value) => updateGroup(selectedSection, selectedGroup, 'questionType', value)}
                         style={{ width: '100%' }}
                       >
-                        <Option value="multipleChoice">Multiple Choice</Option>
-                        <Option value="trueFalse">True/False</Option>
-                        <Option value="fillInTheBlank">Fill in the Blank</Option>
-                        <Option value="matching">Matching</Option>
-                        <Option value="essay">Essay</Option>
+                        <Option value="multiple_choice">Multiple Choice</Option>
+                        <Option value="short_text">Short Text</Option>
+                        <Option value="yes_no_not_given">Yes/No/Not Given</Option>
+                        <Option value="true_false_not_given">True/False/Not Given</Option>
                       </Select>
                     </div>
 

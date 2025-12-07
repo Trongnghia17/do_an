@@ -151,7 +151,7 @@ const TestManagement = ({ examId }) => {
   };
 
   const handleViewSkills = (testId) => {
-    navigate(`/admin/exams/${examId}/tests/${testId}`);
+    navigate(`/admin/exams/${examId}/tests/${testId}/skills`);
   };
 
   const columns = [
