@@ -22,9 +22,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const socialRedirect = (provider) => {
+    const fastApiUrl = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000';
     const map = {
-      google: `${import.meta.env.VITE_API_BASE_URL}/oauth/google/redirect`,
-      facebook: `${import.meta.env.VITE_API_BASE_URL}/oauth/facebook/redirect`,
+      google: `${fastApiUrl}/api/v1/oauth/google/redirect`,
+      facebook: `${fastApiUrl}/api/v1/oauth/facebook/redirect`,
     };
     window.location.href = map[provider];
   };
@@ -32,19 +33,32 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post("api/login", {
-        username: email,
+      const res = await api.post("/auth/login/json", {
+        email: email,
         password: password,
       });
-      const token = res.data.token;
+      const token = res.data.access_token;
+      const user = res.data.user;
+      
       localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
       setToken(token);
-      const me = await getMe();
-      setUser(me.data);
+      setUser(user);
+      
       toast.success("Đăng nhập thành công");
-      nav("/dashboard");
+      nav("/");
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Đăng nhập thất bại");
+      const errorDetail = error?.response?.data?.detail;
+      
+      // Check if it's an OAuth account without password
+      if (errorDetail && errorDetail.includes("Google login")) {
+        toast.error(
+          "Tài khoản này được tạo bằng Google. Vui lòng đăng nhập bằng Google hoặc thiết lập mật khẩu.",
+          { autoClose: 5000 }
+        );
+      } else {
+        toast.error(errorDetail || error?.response?.data?.message || "Đăng nhập thất bại");
+      }
     }
   };
 

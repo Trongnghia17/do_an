@@ -32,17 +32,20 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post("api/login", {
-        username: email,
+      const res = await api.post("/auth/login/json", {
+        email: email,
         password: password,
       });
-      const token = res.data.token;
+      const token = res.data.access_token;
+      const user = res.data.user;
+      
       localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
       setToken(token);
-      const me = await getMe();
-      setUser(me.data);
+      setUser(user);
+      
       toast.success("Đăng nhập thành công");
-      nav("/dashboard");
+      nav("/admin/dashboard");
     } catch (error) {
       toast.error(error?.response?.data?.message || "Đăng nhập thất bại");
     }

@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
 from app.models.exam_models import ExamSkill, ExamTest, Exam, SkillType
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, get_optional_user
 from app.models.auth_models import User
 
 router = APIRouter()
@@ -58,16 +58,21 @@ class SkillUpdateRequest(BaseModel):
 
 @router.get("/", response_model=List[SkillResponse])
 async def list_skills(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     skill_type: Optional[str] = Query(None),
     exam_id: Optional[int] = Query(None),
     exam_test_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
+    is_online: Optional[bool] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """List all skills with filters"""
+    """List all skills with filters (public endpoint - auth optional)"""
+    # Calculate pagination
+    skip = (page - 1) * per_page
+    limit = per_page
+    
     if limit > 100:
         limit = 100
     
@@ -85,6 +90,9 @@ async def list_skills(
     
     if search:
         query = query.where(ExamSkill.name.ilike(f"%{search}%"))
+    
+    if is_online is not None:
+        query = query.where(ExamSkill.is_online == is_online)
     
     query = query.offset(skip).limit(limit).order_by(ExamSkill.created_at.desc())
     
@@ -120,13 +128,14 @@ async def list_skills(
     return response_skills
 
 
-@router.get("/{skill_id}", response_model=SkillResponse)
+@router.get("/{skill_id}")
 async def get_skill(
     skill_id: int,
+    with_sections: bool = Query(False, description="Include sections and questions"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get skill by ID"""
+    """Get skill by ID (public endpoint - auth optional)"""
     result = await db.execute(
         select(ExamSkill)
         .where(ExamSkill.id == skill_id)
@@ -144,7 +153,7 @@ async def get_skill(
     if skill.exam_test:
         await db.refresh(skill.exam_test, ['exam'])
     
-    return {
+    response_data = {
         "id": skill.id,
         "exam_test_id": skill.exam_test_id,
         "name": skill.name,
@@ -159,6 +168,46 @@ async def get_skill(
         "exam_name": skill.exam_test.exam.name if skill.exam_test and skill.exam_test.exam else None,
         "exam_type": skill.exam_test.exam.type if skill.exam_test and skill.exam_test.exam else None,
     }
+    
+    # If with_sections is True, include sections with questions
+    if with_sections:
+        await db.refresh(skill, ['exam_sections'])
+        sections_data = []
+        
+        for section in skill.exam_sections:
+            await db.refresh(section, ['question_groups'])
+            
+            question_groups_data = []
+            for group in section.question_groups:
+                await db.refresh(group, ['questions'])
+                
+                questions_data = []
+                for question in group.questions:
+                    questions_data.append({
+                        "id": question.id,
+                        "content": question.question_text,
+                        "answer_content": question.correct_answer,
+                        "metadata": question.options
+                    })
+                
+            question_groups_data.append({
+                "id": group.id,
+                "name": group.name,
+                "question_type": group.question_type,
+                "content": group.content,
+                "questions": questions_data
+            })
+            
+            sections_data.append({
+                "id": section.id,
+                "title": section.name,
+                "content": section.content,
+                "question_groups": question_groups_data
+            })
+        
+        response_data["sections"] = sections_data
+    
+    return {"success": True, "data": response_data}
 
 
 @router.post("/", response_model=SkillResponse)

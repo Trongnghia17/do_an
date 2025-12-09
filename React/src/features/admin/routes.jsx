@@ -2,7 +2,7 @@ import AdminLayout from '../components/AdminLayout';
 import AdminDashboard from '../pages/AdminDashboard';
 import UserManagement from '../pages/UserManagement';
 import ExamManagement from '../pages/ExamManagement';
-import RoleManagement from '../pages/RoleManagement';
+import AIExamGenerator from '../pages/AIExamGenerator';
 import ProtectedAdminRoute from '../components/ProtectedAdminRoute';
 
 const adminRoutes = {
@@ -25,8 +25,12 @@ const adminRoutes = {
           element: <ExamManagement />,
         },
         {
-          path: 'roles',
-          element: <RoleManagement />,
+          path: 'ai-generator',
+          element: <AIExamGenerator />,
+        },
+        {
+          path: 'ai-exam-generator',
+          element: <AIExamGenerator />,
         },
         {
           path: 'analytics',

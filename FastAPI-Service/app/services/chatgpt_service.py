@@ -45,7 +45,21 @@ class ChatGPTService:
             )
             return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"ChatGPT API error: {str(e)}")
+            error_str = str(e)
+            logger.error(f"ChatGPT API error: {error_str}")
+            logger.error(f"Error type: {type(e).__name__}")
+            if hasattr(e, 'response'):
+                logger.error(f"Response: {e.response}")
+            if hasattr(e, 'body'):
+                logger.error(f"Body: {e.body}")
+            # Log request details for debugging
+            logger.error(f"Model: {self.model}")
+            logger.error(f"Max tokens: {max_tokens or self.max_tokens}")
+            logger.error(f"Temperature: {temperature or self.temperature}")
+            logger.error(f"Messages count: {len(messages)}")
+            if messages:
+                logger.error(f"First message role: {messages[0].get('role')}")
+                logger.error(f"User prompt length: {len(messages[-1].get('content', ''))}")
             raise
 
     async def generate_exam_questions(
@@ -56,7 +70,7 @@ class ChatGPTService:
         difficulty: str,
         num_questions: int = 5,
         question_types: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
+    ):
         """
         Sinh câu hỏi thi tự động
         
@@ -87,10 +101,49 @@ class ChatGPTService:
             f"Generating {num_questions} questions for {exam_type} - {skill} - {topic}"
         )
         
-        response = await self.generate_completion(messages)
+        # For IELTS Reading with many questions, warn about token limits
+        if exam_type.upper() == "IELTS" and skill.lower() == "reading" and num_questions > 25:
+            logger.warning(f"Large question set ({num_questions} questions) may exceed token limits. Consider splitting into smaller batches.")
+        
+        # Increase max_tokens for large question sets
+        # GPT-3.5-turbo supports up to 4096 output tokens
+        max_tokens = self.max_tokens
+        if num_questions >= 40:
+            max_tokens = 4096  # Maximum for gpt-3.5-turbo
+            logger.info(f"Using max tokens {max_tokens} for {num_questions} questions")
+        elif num_questions > 25:
+            max_tokens = 3500
+        elif num_questions > 15:
+            max_tokens = 2500
+        
+        response = await self.generate_completion(messages, max_tokens=max_tokens)
+        
+        # LOG: Response từ GPT
+        logger.info("=" * 80)
+        logger.info("📥 GPT RESPONSE (RAW):")
+        logger.info("=" * 80)
+        logger.info(f"Response length: {len(response)} characters")
+        logger.info(f"Response preview (first 500 chars):\n{response[:500]}...")
+        logger.info("=" * 80)
         
         # Parse response to structured format
         questions = self._parse_generated_questions(response, skill)
+        
+        # LOG: Parsed result
+        logger.info("📦 PARSED RESULT:")
+        if isinstance(questions, dict):
+            logger.info(f"Type: dict")
+            logger.info(f"Keys: {list(questions.keys())}")
+            if "passage" in questions:
+                logger.info(f"✅ Has passage: title='{questions['passage'].get('title', 'N/A')}'")
+            if "question_groups" in questions:
+                logger.info(f"✅ Has {len(questions['question_groups'])} question groups")
+                for idx, group in enumerate(questions['question_groups'], 1):
+                    logger.info(f"   Group {idx}: {group.get('group_name', 'N/A')} - {len(group.get('questions', []))} questions")
+        else:
+            logger.info(f"Type: {type(questions)}")
+            logger.info(f"Length: {len(questions) if isinstance(questions, list) else 'N/A'}")
+        logger.info("=" * 80)
         
         return questions
 
@@ -235,7 +288,286 @@ Keep the feedback encouraging and educational.
         
         types_str = ", ".join(question_types) if question_types else "appropriate types"
         
-        prompt = f"""
+        # Special handling for IELTS Reading - tạo passage hoàn chỉnh
+        if exam_type.upper() == "IELTS" and skill.lower() == "reading":
+            # Build question types instruction
+            question_types_instruction = ""
+            if question_types and len(question_types) > 0:
+                question_types_instruction = f"\n- Required question types: {', '.join(question_types)}"
+                question_types_instruction += "\n- Distribute questions across these types appropriately"
+            else:
+                question_types_instruction = "\n- Use common IELTS Reading question types: True/False/Not Given, Short Answer, Multiple Choice, Matching, etc."
+            
+            prompt = f"""
+You are creating an IELTS Academic Reading test. Generate a complete reading passage with {num_questions} questions about: {topic}
+
+**PASSAGE REQUIREMENTS:**
+- Length: {"500-700 words" if num_questions > 30 else "700-900 words"} (adjust for question volume)
+- Difficulty: {difficulty}
+- Style: Academic, formal, factual (like scientific articles, historical texts, or research papers)
+- Structure: Multiple well-organized paragraphs with clear topic sentences
+- Include specific facts, names, dates, and details that can be tested
+- Keep passage concise but information-rich to support all questions
+
+**QUESTION REQUIREMENTS:**
+- **CRITICAL: You MUST generate EXACTLY {num_questions} questions in total**
+- Question numbering: 1, 2, 3, ... up to {num_questions} (sequential, no gaps){question_types_instruction}
+- Group questions by type (typically 2-3 groups per passage)
+- Each group must contain the actual number of questions matching its range
+  * Example: "Questions 1-15" must have 15 actual question objects (question_number 1 to 15)
+  * Example: "Questions 16-30" must have 15 actual question objects (question_number 16 to 30)
+- Provide appropriate instructions for each question type
+
+**QUESTION TYPE INSTRUCTIONS (use these as templates):**
+
+For MULTIPLE CHOICE:
+- group_name: "Questions X-Y" (adjust range based on actual questions)
+- question_type: "multiple_choice"
+- instruction: "Choose the correct letter, A, B, C or D.\\n\\nWrite the correct letter in boxes X-Y on your answer sheet."
+- Each question must have "answers": array of 4 answer objects
+- Each answer object structure:
+  {{
+    "answer_content": "The answer text",
+    "is_correct": true,  // only ONE answer should be true
+    "feedback": "Brief explanation why this is correct/incorrect"
+  }}
+- correct_answer: The text of the correct answer (for quick reference)
+
+For SHORT TEXT (Short Answer):
+- group_name: "Questions X-Y"
+- question_type: "short_text"
+- instruction: "Answer the questions below.\\n\\nChoose NO MORE THAN TWO WORDS AND/OR A NUMBER from the passage for each answer.\\n\\nWrite your answers in boxes X-Y on your answer sheet."
+- correct_answer: Must be exact words from the passage (max 2-3 words)
+
+For YES/NO/NOT GIVEN:
+- group_name: "Questions X-Y"
+- question_type: "yes_no_not_given"
+- instruction: "Do the following statements agree with the views/claims of the writer?\\n\\nIn boxes X-Y on your answer sheet, write\\n\\nYES if the statement agrees with the views of the writer\\nNO if the statement contradicts the views of the writer\\nNOT GIVEN if it is impossible to say what the writer thinks about this"
+- correct_answer: Must be exactly "YES", "NO", or "NOT GIVEN"
+
+For TRUE/FALSE/NOT GIVEN:
+- group_name: "Questions X-Y"
+- question_type: "true_false_not_given"
+- instruction: "Do the following statements agree with the information given in Reading Passage 1?\\n\\nIn boxes X-Y on your answer sheet, write\\n\\nTRUE if the statement agrees with the information\\nFALSE if it contradicts the information\\nNOT GIVEN if there is no information on this"
+- correct_answer: Must be exactly "TRUE", "FALSE", or "NOT GIVEN"
+
+**OUTPUT FORMAT (JSON):**
+Return ONLY a valid JSON object with this EXACT structure:
+
+{{
+  "passage": {{
+    "title": "Engaging Title Related to {topic}",
+    "introduction": "You should spend about 20 minutes on Questions 1-{num_questions}, which are based on Reading Passage 1 below.\\n\\n[Add subtitle or brief description if needed]",
+    "content": "[Full passage text here, 700-900 words, multiple paragraphs...]",
+    "topic": "{topic}",
+    "word_count": 850
+  }},
+  "question_groups": [
+    {{
+      "group_name": "Questions 1-X",
+      "question_type": "[one of the types above]",
+      "instruction": "[appropriate instruction for this question type - use templates above]",
+      "questions": [
+        {{
+          "question_number": 1,
+          "content": "[Question content]",
+          "answers": [  // ONLY for multiple_choice
+            {{
+              "answer_content": "First option text",
+              "is_correct": false,
+              "feedback": "Why this is incorrect"
+            }},
+            {{
+              "answer_content": "Correct option text",
+              "is_correct": true,
+              "feedback": "Why this is correct"
+            }},
+            {{
+              "answer_content": "Third option text",
+              "is_correct": false,
+              "feedback": "Why this is incorrect"
+            }},
+            {{
+              "answer_content": "Fourth option text",
+              "is_correct": false,
+              "feedback": "Why this is incorrect"
+            }}
+          ],
+          "correct_answer": "Correct option text",
+          "explanation": "[Brief explanation]",
+          "points": 1.0
+        }}
+      ]
+    }},
+    {{
+      "group_name": "Questions Y-{num_questions}",
+      "question_type": "[another type]",
+      "instruction": "[appropriate instruction]",
+      "questions": [...]
+    }}
+  ]
+}}
+
+**CRITICAL RULES:**
+1. **YOU MUST GENERATE EXACTLY {num_questions} QUESTION OBJECTS** - This is the most important requirement
+2. Question numbering must be sequential from 1 to {num_questions} with NO gaps
+3. Each group's "questions" array must contain the full number of questions matching the group_name range
+   - If group_name is "Questions 1-15", the array must have 15 question objects
+   - If group_name is "Questions 16-30", the array must have 15 question objects
+   - DO NOT just create 2-3 sample questions per group
+4. group_name must reflect actual question range (e.g., if group has questions 1-15, use "Questions 1-15")
+5. Instructions must match the question_type and include correct box numbers
+6. TRUE/FALSE/NOT GIVEN: Base on passage information only
+   - TRUE: Clearly stated in passage
+   - FALSE: Contradicts passage information
+   - NOT GIVEN: Not mentioned or cannot be determined from passage
+7. Short Answer: Must use EXACT words from passage
+8. Multiple Choice: Must include "answers" array with 4 answer objects, each with answer_content, is_correct, and feedback
+9. Multiple Choice: Exactly ONE answer must have is_correct: true
+10. All questions must be answerable from the passage
+11. Return ONLY valid JSON, no markdown formatting
+
+**EXAMPLE for {num_questions} questions:**
+If user requests 50 questions with 4 types, you might split as:
+- Group 1: "Questions 1-15" (multiple_choice) → 15 question objects
+- Group 2: "Questions 16-30" (true_false_not_given) → 15 question objects  
+- Group 3: "Questions 31-45" (short_text) → 15 question objects
+- Group 4: "Questions 46-50" (yes_no_not_given) → 5 question objects
+Total: 50 questions
+
+**IMPORTANT NOTES FOR LARGE QUESTION SETS:**
+- For large question sets (>30 questions), keep each question concise but clear
+- Explanations should be VERY BRIEF (5-10 words maximum) - just key facts
+- For multiple_choice: Keep answer_content short (max 5-7 words per option)
+- For multiple_choice: feedback can be just 3-5 words (e.g., "Stated in paragraph 2")
+- Passage content can be shorter if needed to fit all questions
+- PRIORITY: Generate the EXACT number of question objects ({num_questions} total)
+- You MUST complete this task - it's critical to have all {num_questions} questions
+
+**GENERATE ALL {num_questions} QUESTIONS NOW - Be concise but complete!**
+"""
+        elif exam_type.upper() == "IELTS" and skill.lower() == "listening":
+            prompt = f"""
+Generate a complete IELTS Listening test with {num_questions} questions on the topic: {topic}
+
+Requirements:
+- Difficulty level: {difficulty}
+- Create 1 or more parts (Part 1, 2, 3, 4) depending on num_questions
+- Include audio script/transcript for each part
+- Question types: form completion, multiple choice, matching, labeling, etc.
+- Follow official IELTS Listening format
+
+Format your response as a JSON object:
+{{
+  "parts": [
+    {{
+      "part_number": 1,
+      "title": "Part 1",
+      "context": "A conversation between...",
+      "audio_script": "Full transcript of the audio...",
+      "instruction": "Complete the form below. Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.",
+      "questions": [
+        {{
+          "question_number": 1,
+          "question_type": "form_completion",
+          "content": "Name: _______",
+          "correct_answer": "answer",
+          "points": 1.0
+        }}
+      ]
+    }}
+  ]
+}}
+
+Make it realistic and follow IELTS Listening standards.
+"""
+        elif exam_type.upper() == "IELTS" and skill.lower() == "writing":
+            prompt = f"""
+Generate IELTS Writing tasks
+
+Requirements:
+- Task 1: Describe a chart/graph/diagram (150 words minimum)
+- Task 2: Essay question on topic: {topic} (250 words minimum)
+- Follow official IELTS Writing format
+
+Format your response as a JSON object:
+{{
+  "tasks": [
+    {{
+      "task_number": 1,
+      "time": "20 minutes",
+      "instruction": "You should spend about 20 minutes on this task.",
+      "prompt": "The chart below shows... Summarise the information...",
+      "chart_description": "Description of what chart shows",
+      "word_count": 150,
+      "sample_answer": "Optional sample answer for reference"
+    }},
+    {{
+      "task_number": 2,
+      "time": "40 minutes",
+      "instruction": "You should spend about 40 minutes on this task.",
+      "prompt": "Some people believe that... To what extent do you agree or disagree?",
+      "word_count": 250,
+      "sample_answer": "Optional sample answer for reference"
+    }}
+  ]
+}}
+"""
+        elif exam_type.upper() == "IELTS" and skill.lower() == "speaking":
+            prompt = f"""
+Generate IELTS Speaking test on topic: {topic}
+
+Requirements:
+- Part 1: 4-5 general questions (4-5 minutes)
+- Part 2: Long turn with cue card (3-4 minutes including prep)
+- Part 3: 4-5 discussion questions (4-5 minutes)
+- Follow official IELTS Speaking format
+
+Format your response as a JSON object:
+{{
+  "parts": [
+    {{
+      "part_number": 1,
+      "title": "Introduction and Interview",
+      "duration": "4-5 minutes",
+      "instruction": "The examiner asks you about yourself, your home, work or studies and other familiar topics.",
+      "questions": [
+        "Question 1 about {topic}?",
+        "Question 2?",
+        ...
+      ]
+    }},
+    {{
+      "part_number": 2,
+      "title": "Long Turn",
+      "duration": "3-4 minutes",
+      "instruction": "You will have to talk about the topic for one to two minutes. You have one minute to think about what you are going to say.",
+      "cue_card": {{
+        "topic": "Describe...",
+        "points": [
+          "what...",
+          "when...",
+          "why...",
+          "and explain..."
+        ]
+      }}
+    }},
+    {{
+      "part_number": 3,
+      "title": "Discussion",
+      "duration": "4-5 minutes",
+      "questions": [
+        "Abstract question 1?",
+        "Abstract question 2?",
+        ...
+      ]
+    }}
+  ]
+}}
+"""
+        else:
+            # Original prompt for other skills/exams
+            prompt = f"""
 Generate {num_questions} high-quality {exam_type} {skill} questions on the topic: {topic}
 
 Requirements:
@@ -379,9 +711,137 @@ Be fair and constructive.
     ) -> List[Dict[str, Any]]:
         """Parse ChatGPT response into structured questions"""
         import json
+        import re
         
         try:
-            # Try to extract JSON from response
+            # Remove markdown code blocks if present
+            response = response.strip()
+            if response.startswith("```"):
+                # Remove ```json or ``` at start and ``` at end
+                response = re.sub(r'^```(?:json)?\s*\n?', '', response)
+                response = re.sub(r'\n?```\s*$', '', response)
+                response = response.strip()
+            
+            # Check if response is an object (IELTS special formats)
+            if response.startswith("{"):
+                # Try to parse as object first
+                obj_start = response.find("{")
+                obj_end = response.rfind("}") + 1
+                
+                if obj_start != -1 and obj_end > obj_start:
+                    json_str = response[obj_start:obj_end]
+                    data = json.loads(json_str)
+                    
+                    # IELTS Reading format: passage + question_groups
+                    if "passage" in data and "question_groups" in data:
+                        passage_info = data["passage"]
+                        question_groups = data["question_groups"]
+                        
+                        # Return structure với passage và groups
+                        return {
+                            "passage": passage_info,
+                            "question_groups": question_groups
+                        }
+                    
+                    # Fallback: old format passage + questions (không có groups)
+                    elif "passage" in data and "questions" in data:
+                        passage_info = data["passage"]
+                        questions = data["questions"]
+                        
+                        for q in questions:
+                            if "metadata" not in q:
+                                q["metadata"] = {}
+                            q["metadata"]["passage"] = {
+                                "title": passage_info.get("title", ""),
+                                "introduction": passage_info.get("introduction", ""),
+                                "content": passage_info.get("content", ""),
+                                "word_count": passage_info.get("word_count", 0)
+                            }
+                        
+                        return questions
+                    
+                    # IELTS Listening format: parts with audio scripts
+                    elif "parts" in data and skill.lower() == "listening":
+                        all_questions = []
+                        for part in data["parts"]:
+                            part_questions = part.get("questions", [])
+                            for q in part_questions:
+                                if "metadata" not in q:
+                                    q["metadata"] = {}
+                                q["metadata"]["part"] = {
+                                    "part_number": part.get("part_number"),
+                                    "title": part.get("title", ""),
+                                    "context": part.get("context", ""),
+                                    "audio_script": part.get("audio_script", ""),
+                                    "instruction": part.get("instruction", "")
+                                }
+                                all_questions.append(q)
+                        return all_questions
+                    
+                    # IELTS Writing format: tasks
+                    elif "tasks" in data and skill.lower() == "writing":
+                        questions = []
+                        for task in data["tasks"]:
+                            questions.append({
+                                "question_number": task.get("task_number"),
+                                "question_type": "essay" if task.get("task_number") == 2 else "chart_description",
+                                "content": task.get("prompt", ""),
+                                "correct_answer": "",  # No correct answer for writing
+                                "explanation": task.get("sample_answer", ""),
+                                "points": 0,
+                                "metadata": {
+                                    "time": task.get("time", ""),
+                                    "instruction": task.get("instruction", ""),
+                                    "word_count": task.get("word_count", 0),
+                                    "chart_description": task.get("chart_description", "")
+                                }
+                            })
+                        return questions
+                    
+                    # IELTS Speaking format: parts with questions
+                    elif "parts" in data and skill.lower() == "speaking":
+                        questions = []
+                        q_num = 1
+                        for part in data["parts"]:
+                            if part.get("part_number") == 2:
+                                # Part 2: Cue card
+                                cue_card = part.get("cue_card", {})
+                                questions.append({
+                                    "question_number": q_num,
+                                    "question_type": "cue_card",
+                                    "content": cue_card.get("topic", ""),
+                                    "correct_answer": "",
+                                    "explanation": "",
+                                    "points": 0,
+                                    "metadata": {
+                                        "part": part.get("part_number"),
+                                        "title": part.get("title", ""),
+                                        "duration": part.get("duration", ""),
+                                        "instruction": part.get("instruction", ""),
+                                        "points": cue_card.get("points", [])
+                                    }
+                                })
+                                q_num += 1
+                            else:
+                                # Part 1 and 3: Questions
+                                for q_text in part.get("questions", []):
+                                    questions.append({
+                                        "question_number": q_num,
+                                        "question_type": "spoken_question",
+                                        "content": q_text,
+                                        "correct_answer": "",
+                                        "explanation": "",
+                                        "points": 0,
+                                        "metadata": {
+                                            "part": part.get("part_number"),
+                                            "title": part.get("title", ""),
+                                            "duration": part.get("duration", "")
+                                        }
+                                    })
+                                    q_num += 1
+                        return questions
+            
+            # Try to extract JSON array from response
             start_idx = response.find("[")
             end_idx = response.rfind("]") + 1
             

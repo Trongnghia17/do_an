@@ -9,61 +9,17 @@ export const useAIGeneration = () => {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
 
-  const generateQuestions = async (config) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const data = await aiGenerationAPI.generateQuestions({
-        exam_type: config.examType,
-        skill: config.skill,
-        topic: config.topic,
-        difficulty: config.difficulty,
-        num_questions: config.numQuestions || 5,
-        question_types: config.questionTypes,
-      });
-      
-      setResult(data);
-      return data;
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to generate questions');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateContent = async (config) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const data = await aiGenerationAPI.generateContent({
-        content_type: config.contentType,
-        skill: config.skill,
-        topic: config.topic,
-        difficulty: config.difficulty,
-        word_count: config.wordCount,
-      });
-      
-      setResult(data);
-      return data;
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to generate content');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const generateExam = async (config) => {
     setLoading(true);
     setError(null);
     
     try {
       const data = await aiGenerationAPI.generateExam({
-        exam_type: config.examType,
-        exam_name: config.examName,
+        exam_id: config.examId,
+        exam_test_id: config.examTestId,
+        skill_type: config.skillType,
+        skill_name: config.skillName,
+        time_limit: config.timeLimit,
         sections: config.sections,
       });
       
@@ -77,10 +33,35 @@ export const useAIGeneration = () => {
     }
   };
 
+  const generateQuestions = async (config) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const data = await aiGenerationAPI.generateQuestions({
+        exam_type: config.examType,
+        skill: config.skill,
+        topic: config.topic,
+        difficulty: config.difficulty,
+        num_questions: config.numQuestions || config.num_questions,
+        question_types: config.questionTypes || config.question_types,
+      });
+      
+      setResult(data);
+      return data;
+    } catch (err) {
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to generate questions';
+      setError(errorMsg);
+      console.error('Generate questions error:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
-    generateQuestions,
-    generateContent,
     generateExam,
+    generateQuestions,
     loading,
     error,
     result,

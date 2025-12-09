@@ -42,20 +42,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Session middleware for admin panel
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=settings.SECRET_KEY,
-    max_age=3600 * 24,  # 24 hours
-)
-
-# CORS
+# CORS - MUST be added FIRST before other middlewares
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+)
+
+# Session middleware for admin panel
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    max_age=3600 * 24,  # 24 hours
 )
 
 # Static files (for uploads, etc.)

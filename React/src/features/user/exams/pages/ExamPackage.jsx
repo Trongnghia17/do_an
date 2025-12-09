@@ -45,12 +45,18 @@ export default function ExamPackage() {
     try {
       setLoading(true);
       const response = await getExams({ type: examType });
-      if (response.data.success) {
-        const skillsData = response.data.data.data || response.data.data;
-        setSkills(skillsData);
-      }
+      
+      console.log('API Response:', response.data); // Debug log
+      
+      // FastAPI trả về trực tiếp array, không có wrapper success/data
+      const skillsData = Array.isArray(response.data) ? response.data : [];
+      
+      console.log('Exams data to display:', skillsData); // Debug log
+      setSkills(skillsData);
+      
     } catch (error) {
       console.error('Error fetching skills:', error);
+      setSkills([]);
     } finally {
       setLoading(false);
     }
@@ -59,7 +65,8 @@ export default function ExamPackage() {
   // Filter và Sort skills (giữ nguyên logic)
   const filteredSkills = skills.filter(skill => {
     const matchesSearch = skill.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      skill.exam_test?.exam?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      skill.exam_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      skill.exam_test_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesSkillType = filters.skillType.length === 0 ||
       filters.skillType.includes(skill.skill_type);
@@ -94,6 +101,8 @@ export default function ExamPackage() {
     }
   });
 
+  console.log('Filtered exams:', filteredSkills.length, 'Sorted exams:', sortedSkills.length); // Debug log
+
   const handleFilterChange = (filterType, value) => {
     setFilters(prev => ({
       ...prev,
@@ -112,7 +121,10 @@ export default function ExamPackage() {
       if (image.startsWith('http')) {
         return image;
       }
-      return `${import.meta.env.VITE_API_BASE_URL}/storage/${image}`;
+      // API trả về path như: /uploads/... hoặc uploads/...
+      // Cần build full URL với backend base
+      const imagePath = image.startsWith('/') ? image : `/${image}`;
+      return `${import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000'}${imagePath}`;
     }
 
     const colors = {

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel
@@ -36,13 +36,17 @@ class ExamResponse(BaseModel):
 
 @router.get("/", response_model=List[ExamResponse])
 async def list_exams(
-    skip: int = 0,
-    limit: int = 20,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     type: Optional[str] = None,
     is_active: Optional[bool] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """List all exams"""
+    # Calculate pagination
+    skip = (page - 1) * per_page
+    limit = per_page
+    
     if limit > 100:
         limit = 100
     
@@ -85,12 +89,12 @@ async def create_exam(
     return exam
 
 
-@router.get("/{exam_id}", response_model=ExamResponse)
+@router.get("/{exam_id}")
 async def get_exam(
     exam_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """Get exam by ID"""
+    """Get exam by ID with nested tests and skills"""
     result = await db.execute(
         select(Exam).where(Exam.id == exam_id, Exam.deleted_at.is_(None))
     )
@@ -99,7 +103,57 @@ async def get_exam(
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
     
-    return exam
+    # Load tests for this exam
+    tests_result = await db.execute(
+        select(ExamTest).where(
+            ExamTest.exam_id == exam_id,
+            ExamTest.deleted_at.is_(None)
+        ).order_by(ExamTest.created_at)
+    )
+    tests = tests_result.scalars().all()
+    
+    # Build response with nested tests and skills
+    tests_data = []
+    for test in tests:
+        # Load skills for each test
+        from app.models.exam_models import ExamSkill
+        skills_result = await db.execute(
+            select(ExamSkill).where(ExamSkill.exam_test_id == test.id)
+        )
+        skills = skills_result.scalars().all()
+        
+        skills_data = [
+            {
+                "id": skill.id,
+                "name": skill.name,
+                "skill_type": skill.skill_type.value if hasattr(skill.skill_type, 'value') else skill.skill_type,
+                "time_limit": skill.time_limit,
+                "description": skill.description,
+                "image": skill.image,
+                "is_online": skill.is_online,
+            }
+            for skill in skills
+        ]
+        
+        tests_data.append({
+            "id": test.id,
+            "name": test.name,
+            "description": test.description,
+            "skills": skills_data
+        })
+    
+    return {
+        "id": exam.id,
+        "name": exam.name,
+        "type": exam.type.value if hasattr(exam.type, 'value') else exam.type,
+        "exam_type": exam.type.value if hasattr(exam.type, 'value') else exam.type,  # Alias for frontend
+        "description": exam.description,
+        "image": exam.image,
+        "is_active": exam.is_active,
+        "created_at": exam.created_at,
+        "tests": tests_data,
+        "total_attempts": 0  # TODO: Implement tracking system
+    }
 
 
 @router.put("/{exam_id}", response_model=ExamResponse)

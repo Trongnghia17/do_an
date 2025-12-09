@@ -49,11 +49,16 @@ export default function ExamDetailView() {
                 setLoading(true);
                 setError(null);
 
-                // Giả định API getExamsDetail trả về thông tin chi tiết gói đề
+                // FastAPI trả về trực tiếp dữ liệu, không có wrapper success/data
                 const response = await getExamsDetail(examId);
+                
+                console.log('Exam detail response:', response.data); // Debug log
 
-                if (response.data.success) {
-                    setExamData(response.data.data);
+                // FastAPI trả về trực tiếp object exam
+                const examDetail = response.data;
+                
+                if (examDetail && examDetail.id) {
+                    setExamData(examDetail);
                 } else {
                     setError('Không thể tải chi tiết bộ đề.');
                 }

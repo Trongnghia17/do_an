@@ -1,2 +1,2 @@
 import api from '@/lib/axios';
-export const getMe = () => api.get('/api/me');
+export const getMe = () => api.get('/auth/me');

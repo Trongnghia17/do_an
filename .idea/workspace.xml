@@ -5,11 +5,26 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b28cf914-2307-40b3-b657-3544debb399a" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/oauth.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/otp.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/email_service.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/React/src/features/user/auth/pages/SetPassword.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/upload.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/upload.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/admin/pages/SkillDetail.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/pages/SkillDetail.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/admin/services/adminService.js" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/services/adminService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/services/fastapi.service.js" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/services/fastapi.service.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/sections.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/sections.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/skills.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/skills.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HUONG-DAN-TAO-DE-THI-AI.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/app/routes.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/app/routes.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/auth/pages/Login.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/auth/pages/Login.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/auth/pages/Login.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/auth/pages/Login.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/auth/pages/OAuthCallback.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/auth/pages/OAuthCallback.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/auth/pages/Register.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/auth/pages/Register.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/auth/pages/VerifyOtp.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/auth/pages/VerifyOtp.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/ReadingTest.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/ReadingTest.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example-ielts-reading-payload.json" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,7 +37,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="master" />
+        <entry key="$PROJECT_DIR$" value="master2" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -36,20 +51,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/dell/Đồ án 2&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master3",
+    "last_opened_file_path": "/home/dell/Đồ án 2",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -69,6 +84,8 @@
       <workItem from="1764925114788" duration="12419000" />
       <workItem from="1765016653872" duration="185000" />
       <workItem from="1765016847845" duration="3686000" />
+      <workItem from="1765185863819" duration="5262000" />
+      <workItem from="1765266900298" duration="4045000" />
     </task>
     <servers />
   </component>

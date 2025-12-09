@@ -25,8 +25,8 @@ class Settings(BaseSettings):
 
     # OpenAI
     OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4-turbo-preview"
-    OPENAI_MAX_TOKENS: int = 4000
+    OPENAI_MODEL: str = "gpt-3.5-turbo"  # More stable and supports 16k tokens
+    OPENAI_MAX_TOKENS: int = 4096  # Safe default for most models
     OPENAI_TEMPERATURE: float = 0.7
 
     # Redis
@@ -50,6 +50,22 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "INFO"
+
+    # Email Configuration
+    MAIL_MAILER: str = "smtp"
+    MAIL_HOST: str = "smtp.gmail.com"
+    MAIL_PORT: int = 587
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_ENCRYPTION: str = "tls"
+    MAIL_FROM_ADDRESS: str = ""
+    MAIL_FROM_NAME: str = "Owl"
+
+    # OAuth Google Configuration
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://127.0.0.1:8000/oauth/google/callback"
+    FRONTEND_APP_URL: str = "http://localhost:5173"
 
     class Config:
         env_file = ".env"
