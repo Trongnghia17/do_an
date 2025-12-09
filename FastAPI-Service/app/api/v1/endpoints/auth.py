@@ -73,6 +73,7 @@ async def register(
         phone=user_data.phone,
         password=User.hash_password(user_data.password),
         is_active=True,
+        role_id=2,  # Student role
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
@@ -204,19 +205,33 @@ async def login_json(
     )
     user = result.scalar_one_or_none()
     
-    if not user or not user.verify_password(login_data.password):
-        if user:
-            failed_activity = LoginActivity(
-                user_id=user.id,
-                provider="email",
-                ip=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
-                succeeded=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            db.add(failed_activity)
-            await db.commit()
+    # Check if user exists
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    
+    # Check if user has password (OAuth users may not have password)
+    if not user.password or user.password == "":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account was created with Google login. Please login with Google or set a password first."
+        )
+    
+    # Verify password
+    if not user.verify_password(login_data.password):
+        failed_activity = LoginActivity(
+            user_id=user.id,
+            provider="email",
+            ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            succeeded=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(failed_activity)
+        await db.commit()
         
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -304,6 +319,48 @@ async def refresh_token(current_user: User = Depends(get_current_user)):
             "email": current_user.email,
         }
     )
+
+
+class SetPasswordRequest(BaseModel):
+    password: str
+    confirm_password: str
+
+
+@router.post("/set-password")
+async def set_password(
+    request: SetPasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Set password for OAuth users who don't have password yet
+    """
+    # Validate passwords match
+    if request.password != request.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+    
+    # Validate password strength
+    if len(request.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters long"
+        )
+    
+    # Update password
+    current_user.password = User.hash_password(request.password)
+    current_user.updated_at = datetime.utcnow()
+    
+    await db.commit()
+    
+    logger.info(f"Password set for user: {current_user.email}")
+    
+    return {
+        "success": True,
+        "message": "Password has been set successfully. You can now login with email and password."
+    }
 
 
 @router.get("/login-history")

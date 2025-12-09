@@ -55,7 +55,7 @@ export default function Register() {
 
   const handleSendCode = async (method) => {
     try {
-      await api.post("api/otp/send", {
+      await api.post("/otp/send", {
         channel: method,
         destination: method === "email" ? email : phone,
         email,
@@ -83,9 +83,10 @@ export default function Register() {
 
 
   const socialRedirect = (provider) => {
+    const fastApiUrl = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000';
     const map = {
-      google: `${import.meta.env.VITE_API_BASE_URL}/oauth/google/redirect`,
-      facebook: `${import.meta.env.VITE_API_BASE_URL}/oauth/facebook/redirect`,
+      google: `${fastApiUrl}/api/v1/oauth/google/redirect`,
+      facebook: `${fastApiUrl}/api/v1/oauth/facebook/redirect`,
     };
     window.location.href = map[provider];
   };

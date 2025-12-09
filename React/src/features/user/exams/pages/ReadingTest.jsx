@@ -104,325 +104,6 @@ const GroupContentWithInlineInputs = ({ content, questions = [], answers = {}, o
   );
 };
 
-// Component to parse ONLY Group Content with @selection (List of Headings)
-const GroupContentWithDragItems = ({ content }) => {
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    if (!content) {
-      container.innerHTML = '';
-      return;
-    }
-
-    let processedContent = content;
-
-    // Replace @selection[[letter ;; content]] with draggable items
-    const selectionRegex = /@selection\[\[\s*([A-Z0-9a-z]+)\s*;;\s*(.*?)\s*\]\]/g;
-    processedContent = processedContent.replace(selectionRegex, (match, letter, labelContent) => {
-      return `<span class="reading-test__draggable-answer-inline" draggable="true" data-drag-value="${letter}">${labelContent.trim()}</span>`;
-    });
-
-    container.innerHTML = processedContent;
-
-    // Make all draggable items functional
-    const draggableItems = container.querySelectorAll('.reading-test__draggable-answer-inline');
-    draggableItems.forEach((item) => {
-      const dragValue = item.dataset.dragValue;
-      
-      item.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', dragValue);
-        e.dataTransfer.effectAllowed = 'copy';
-        item.style.opacity = '0.5';
-      });
-
-      item.addEventListener('dragend', (e) => {
-        item.style.opacity = '1';
-      });
-    });
-  }, [content]);
-
-  return (
-    <div
-      className="reading-test__group-content-parsed"
-      ref={containerRef}
-    />
-  );
-};
-
-// Component to parse ONLY Section Content with {{ a }} inputs
-const SectionContentWithInputs = ({ content, questions = [], answers = {}, onAnswerChange }) => {
-  const containerRef = useRef(null);
-  const placeholdersMetaRef = useRef([]);
-  const latestHandlerRef = useRef(onAnswerChange);
-
-  useEffect(() => {
-    latestHandlerRef.current = onAnswerChange;
-  }, [onAnswerChange]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    if (!content) {
-      container.innerHTML = '';
-      placeholdersMetaRef.current = [];
-      return;
-    }
-
-    let processedContent = content;
-
-    // Replace {{ a }} placeholders with input boxes
-    const placeholderRegex = /\{\{\s*([a-zA-Z0-9]+)\s*\}\}/g;
-    const placeholderMeta = [];
-    let questionIndex = 0;
-
-    processedContent = processedContent.replace(placeholderRegex, (match) => {
-      const question = questions[questionIndex];
-      questionIndex += 1;
-
-      if (!question) {
-        return match;
-      }
-
-      const placeholderId = `section-input-${question.id}`;
-      placeholderMeta.push({ placeholderId, question });
-      return `<span class="reading-test__section-input-placeholder" data-placeholder-id="${placeholderId}"></span>`;
-    });
-
-    container.innerHTML = processedContent;
-
-    // Replace placeholders with input boxes
-    placeholderMeta.forEach((meta) => {
-      const placeholderElement = container.querySelector(`[data-placeholder-id="${meta.placeholderId}"]`);
-      if (!placeholderElement) return;
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'reading-test__drag-drop-input';
-      input.dataset.questionId = meta.question.id;
-      input.maxLength = 10;
-      input.placeholder = '';
-
-      const handleInput = (event) => {
-        latestHandlerRef.current?.(meta.question.id, event.target.value.toUpperCase());
-      };
-
-      const handleDragOver = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        input.classList.add('drag-over');
-      };
-
-      const handleDragLeave = (event) => {
-        event.stopPropagation();
-        input.classList.remove('drag-over');
-      };
-
-      const handleDrop = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        input.classList.remove('drag-over');
-        const droppedText = event.dataTransfer.getData('text/plain');
-        latestHandlerRef.current?.(meta.question.id, droppedText);
-      };
-
-      const stopPropagation = (event) => event.stopPropagation();
-
-      input.addEventListener('input', handleInput);
-      input.addEventListener('dragover', handleDragOver);
-      input.addEventListener('dragleave', handleDragLeave);
-      input.addEventListener('drop', handleDrop);
-      input.addEventListener('focus', stopPropagation);
-      input.addEventListener('click', stopPropagation);
-
-      placeholderElement.replaceWith(input);
-
-      meta.input = input;
-      meta.cleanup = () => {
-        input.removeEventListener('input', handleInput);
-        input.removeEventListener('dragover', handleDragOver);
-        input.removeEventListener('dragleave', handleDragLeave);
-        input.removeEventListener('drop', handleDrop);
-        input.removeEventListener('focus', stopPropagation);
-        input.removeEventListener('click', stopPropagation);
-      };
-    });
-
-    placeholdersMetaRef.current = placeholderMeta;
-
-    return () => {
-      placeholderMeta.forEach((meta) => meta.cleanup?.());
-    };
-  }, [content, questions]);
-
-  useEffect(() => {
-    placeholdersMetaRef.current.forEach(({ question, input }) => {
-      if (!input) return;
-      const nextValue = answers?.[question.id] || '';
-      
-      if (input.value !== nextValue) {
-        input.value = nextValue;
-      }
-    });
-  }, [answers]);
-
-  return (
-    <div
-      className="reading-test__section-content-parsed"
-      ref={containerRef}
-    />
-  );
-};
-
-const GroupContentWithDragDropZones = ({ content, questions = [], answers = {}, onAnswerChange }) => {
-  const containerRef = useRef(null);
-  const placeholdersMetaRef = useRef([]);
-  const latestHandlerRef = useRef(onAnswerChange);
-
-  useEffect(() => {
-    latestHandlerRef.current = onAnswerChange;
-  }, [onAnswerChange]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    if (!content) {
-      container.innerHTML = '';
-      placeholdersMetaRef.current = [];
-      return;
-    }
-
-    let processedContent = content;
-
-    // Step 1: Replace @selection[[letter ;; content]] with draggable items
-    const selectionRegex = /@selection\[\[\s*([A-Z])\s*;;\s*(.*?)\s*\]\]/g;
-    processedContent = processedContent.replace(selectionRegex, (match, letter, labelContent) => {
-      return `<span class="reading-test__draggable-answer-inline" draggable="true" data-drag-value="${letter}">${labelContent.trim()}</span>`;
-    });
-
-    // Step 2: Replace {{ a }} placeholders with input boxes
-    const placeholderRegex = /\{\{\s*([a-zA-Z0-9]+)\s*\}\}/g;
-    const placeholderMeta = [];
-    let questionIndex = 0;
-
-    processedContent = processedContent.replace(placeholderRegex, (match) => {
-      const question = questions[questionIndex];
-      questionIndex += 1;
-
-      if (!question) {
-        return match;
-      }
-
-      const placeholderId = `inline-input-${question.id}`;
-      placeholderMeta.push({ placeholderId, question });
-      return `<span class="reading-test__inline-input-placeholder" data-placeholder-id="${placeholderId}"></span>`;
-    });
-
-    container.innerHTML = processedContent;
-
-    // Make all draggable items functional
-    const draggableItems = container.querySelectorAll('.reading-test__draggable-answer-inline');
-    draggableItems.forEach((item) => {
-      const dragValue = item.dataset.dragValue;
-      
-      item.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', dragValue);
-        e.dataTransfer.effectAllowed = 'copy';
-        item.style.opacity = '0.5';
-      });
-
-      item.addEventListener('dragend', (e) => {
-        item.style.opacity = '1';
-      });
-    });
-
-    // Replace placeholders with input boxes
-    placeholderMeta.forEach((meta) => {
-      const placeholderElement = container.querySelector(`[data-placeholder-id="${meta.placeholderId}"]`);
-      if (!placeholderElement) return;
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'reading-test__drag-drop-input';
-      input.dataset.questionId = meta.question.id;
-      input.maxLength = 10;
-      input.placeholder = '';
-
-      const handleInput = (event) => {
-        latestHandlerRef.current?.(meta.question.id, event.target.value.toUpperCase());
-      };
-
-      const handleDragOver = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        input.classList.add('drag-over');
-      };
-
-      const handleDragLeave = (event) => {
-        event.stopPropagation();
-        input.classList.remove('drag-over');
-      };
-
-      const handleDrop = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        input.classList.remove('drag-over');
-        const droppedText = event.dataTransfer.getData('text/plain');
-        latestHandlerRef.current?.(meta.question.id, droppedText);
-      };
-
-      const stopPropagation = (event) => event.stopPropagation();
-
-      input.addEventListener('input', handleInput);
-      input.addEventListener('dragover', handleDragOver);
-      input.addEventListener('dragleave', handleDragLeave);
-      input.addEventListener('drop', handleDrop);
-      input.addEventListener('focus', stopPropagation);
-      input.addEventListener('click', stopPropagation);
-
-      placeholderElement.replaceWith(input);
-
-      meta.input = input;
-      meta.cleanup = () => {
-        input.removeEventListener('input', handleInput);
-        input.removeEventListener('dragover', handleDragOver);
-        input.removeEventListener('dragleave', handleDragLeave);
-        input.removeEventListener('drop', handleDrop);
-        input.removeEventListener('focus', stopPropagation);
-        input.removeEventListener('click', stopPropagation);
-      };
-    });
-
-    placeholdersMetaRef.current = placeholderMeta;
-
-    return () => {
-      placeholderMeta.forEach((meta) => meta.cleanup?.());
-    };
-  }, [content, questions]);
-
-  useEffect(() => {
-    placeholdersMetaRef.current.forEach(({ question, input }) => {
-      if (!input) return;
-      const nextValue = answers?.[question.id] || '';
-      
-      if (input.value !== nextValue) {
-        input.value = nextValue;
-      }
-    });
-  }, [answers]);
-
-  return (
-    <div
-      className="reading-test__group-content-parsed reading-test__drag-drop-table"
-      ref={containerRef}
-    />
-  );
-};
-
 export default function ReadingTest() {
   const { skillId, sectionId } = useParams();
   const location = useLocation();
@@ -485,47 +166,7 @@ export default function ReadingTest() {
                 // Parse options based on question_type
                 let options = [];
                 let optionsWithContent = null;
-                let dragDropAnswers = null;
                 const questionType = (group.question_type || '').toLowerCase();
-                
-                // Check if this is a drag-drop type
-                const groupOptions = group.options || {};
-                const isDragDrop = groupOptions.allow_drag_drop === true || groupOptions.allow_drag_drop === 1;
-                const hasAnswersInContent = groupOptions.answer_inputs_inside_content === true || groupOptions.answer_inputs_inside_content === 1;
-                
-                // For drag-drop, get answers from first question's metadata OR from groupContent
-                if (isDragDrop && hasAnswersInContent) {
-                  // Try to parse @selection[[]] from groupContent first
-                  if (group.content) {
-                    const selectionRegex = /@selection\[\[(.*?);;\s*(.*?)\]\]/g;
-                    const matches = [...group.content.matchAll(selectionRegex)];
-                    
-                    if (matches.length > 0) {
-                      dragDropAnswers = matches.map((match, index) => ({
-                        id: `answer-${index}`,
-                        letter: match[1].trim(),
-                        content: match[2].trim()
-                      }));
-                    }
-                  }
-                  
-                  // If no @selection found, try to get from metadata
-                  if (!dragDropAnswers && group.questions && group.questions.length > 0) {
-                    const firstQuestion = group.questions[0];
-                    if (firstQuestion.metadata) {
-                      const metadata = typeof firstQuestion.metadata === 'string' 
-                        ? JSON.parse(firstQuestion.metadata) 
-                        : firstQuestion.metadata;
-                      
-                      if (metadata.answers && Array.isArray(metadata.answers)) {
-                        dragDropAnswers = metadata.answers.map((answer, index) => ({
-                          id: `answer-${index}`,
-                          content: typeof answer === 'string' ? answer : (answer.content || answer.text || '')
-                        }));
-                      }
-                    }
-                  }
-                }
                 
                 switch (questionType) {
                   case 'multiple_choice':
@@ -564,10 +205,6 @@ export default function ReadingTest() {
                       : ['True', 'False', 'Not Given'];
                     break;
                     
-                  case 'table_selection':
-                    options = (group.options && group.options.length > 0) ? group.options : [];
-                    break;
-                    
                   case 'short_text':
                     // No options needed for text input
                     options = [];
@@ -583,14 +220,9 @@ export default function ReadingTest() {
                   id: group.id,
                   part: 1,
                   type: group.question_type || 'TRUE_FALSE_NOT_GIVEN',
-                  instructions: group.instructions,
                   groupContent: group.content,
                   options: options,
                   optionsWithContent: optionsWithContent,
-                  isDragDrop: isDragDrop,
-                  hasAnswersInContent: hasAnswersInContent,
-                  dragDropAnswers: dragDropAnswers,
-                  numberOfOptions: groupOptions.number_of_options || 7,
                   questions: questions,
                   startNumber: questions[0]?.number || 1,
                   endNumber: questions[questions.length - 1]?.number || 1
@@ -645,47 +277,7 @@ export default function ReadingTest() {
                     // Parse options based on question_type
                     let options = [];
                     let optionsWithContent = null;
-                    let dragDropAnswers = null;
                     const questionType = (group.question_type || '').toLowerCase();
-                    
-                    // Check if this is a drag-drop type
-                    const groupOptions = group.options || {};
-                    const isDragDrop = groupOptions.allow_drag_drop === true || groupOptions.allow_drag_drop === 1;
-                    const hasAnswersInContent = groupOptions.answer_inputs_inside_content === true || groupOptions.answer_inputs_inside_content === 1;
-                    
-                    // For drag-drop, get answers from first question's metadata OR from groupContent
-                    if (isDragDrop && hasAnswersInContent) {
-                      // Try to parse @selection[[]] from groupContent first
-                      if (group.content) {
-                        const selectionRegex = /@selection\[\[(.*?);;\s*(.*?)\]\]/g;
-                        const matches = [...group.content.matchAll(selectionRegex)];
-                        
-                        if (matches.length > 0) {
-                          dragDropAnswers = matches.map((match, index) => ({
-                            id: `answer-${index}`,
-                            letter: match[1].trim(),
-                            content: match[2].trim()
-                          }));
-                        }
-                      }
-                      
-                      // If no @selection found, try to get from metadata
-                      if (!dragDropAnswers && group.questions && group.questions.length > 0) {
-                        const firstQuestion = group.questions[0];
-                        if (firstQuestion.metadata) {
-                          const metadata = typeof firstQuestion.metadata === 'string' 
-                            ? JSON.parse(firstQuestion.metadata) 
-                            : firstQuestion.metadata;
-                          
-                          if (metadata.answers && Array.isArray(metadata.answers)) {
-                            dragDropAnswers = metadata.answers.map((answer, index) => ({
-                              id: `answer-${index}`,
-                              content: typeof answer === 'string' ? answer : (answer.content || answer.text || '')
-                            }));
-                          }
-                        }
-                      }
-                    }
                     
                     switch (questionType) {
                       case 'multiple_choice':
@@ -724,10 +316,6 @@ export default function ReadingTest() {
                           : ['True', 'False', 'Not Given'];
                         break;
                         
-                      case 'table_selection':
-                        options = (group.options && group.options.length > 0) ? group.options : [];
-                        break;
-                        
                       case 'short_text':
                         // No options needed for text input
                         options = [];
@@ -743,14 +331,9 @@ export default function ReadingTest() {
                       id: group.id,
                       part: partNumber,
                       type: group.question_type || 'TRUE_FALSE_NOT_GIVEN',
-                      instructions: group.instructions,
                       groupContent: group.content,
                       options: options,
                       optionsWithContent: optionsWithContent,
-                      isDragDrop: isDragDrop,
-                      hasAnswersInContent: hasAnswersInContent,
-                      dragDropAnswers: dragDropAnswers,
-                      numberOfOptions: groupOptions.number_of_options || 7,
                       questions: questions,
                       startNumber: questions[0]?.number || questionNumber,
                       endNumber: questions[questions.length - 1]?.number || questionNumber
@@ -843,18 +426,6 @@ export default function ReadingTest() {
   const renderQuestionsByType = (group, answers, handleAnswerSelect) => {
     const questionType = (group.type || '').toLowerCase();
 
-    // 0. DẠNG DRAG-DROP - Kéo thả đáp án từ Group Content (List of Headings)
-    // Inputs {{ a }} sẽ ở trong Section Content (passage)
-    if (group.isDragDrop && group.hasAnswersInContent) {
-      return (
-        <div className="reading-test__drag-drop-container">
-          <GroupContentWithDragItems
-            content={group.groupContent}
-          />
-        </div>
-      );
-    }
-
     // 1. DẠNG SHORT_TEXT - Điền vào chỗ trống inline (có {{ placeholders }})
     const hasPlaceholders = containsInlinePlaceholders(group.groupContent);
     if (hasPlaceholders || questionType === 'short_text') {
@@ -925,55 +496,8 @@ export default function ReadingTest() {
       ));
     }
 
-    // 3. DẠNG TABLE_SELECTION - Render table with checkboxes
-    if (questionType === 'table_selection') {
-      const numberOfOptions = group.numberOfOptions || 6;
-      const optionLetters = Array.from({ length: numberOfOptions }, (_, i) => String.fromCharCode(65 + i)); // A, B, C, D, E, F
-      
-      return (
-        <div className="reading-test__selection-table-wrapper">
-          {/* Header */}
-          <div className="reading-test__selection-header">
-            <div className="reading-test__selection-header-spacer"></div>
-            {optionLetters.map((letter) => (
-              <div key={letter} className="reading-test__selection-header-cell">
-                {letter}
-              </div>
-            ))}
-          </div>
-          
-          {/* Rows */}
-          {group.questions.map((question) => (
-            <div key={question.id} className="reading-test__selection-row">
-              <div className="reading-test__selection-question">
-                <span className="reading-test__question-number">{question.number}</span>
-                <div className="reading-test__question-text" dangerouslySetInnerHTML={{ __html: question.content }} />
-              </div>
-              <div className="reading-test__selection-options">
-                {optionLetters.map((letter) => (
-                  <div key={letter} className="reading-test__selection-option-cell">
-                    <label className="reading-test__checkbox-wrapper">
-                      <input
-                        type="radio"
-                        name={`question-${question.id}`}
-                        value={letter}
-                        checked={answers[question.id] === letter}
-                        onChange={() => handleAnswerSelect(question.id, letter)}
-                        className="reading-test__checkbox-input"
-                      />
-                      <span className="reading-test__checkbox-custom"></span>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    // 4. DẠNG CÒN LẠI - Render radio buttons với group.options
-    // Áp dụng cho: yes_no_not_given, true_false_not_given, và các loại khác
+    // 3. DẠNG CÒN LẠI - Render radio buttons với group.options
+    // Áp dụng cho: yes_no_not_given, true_false_not_given
     return group.questions.map((question) => (
       <div key={question.id} className="reading-test__question-item">
         <div className="reading-test__question-row">
@@ -1027,32 +551,10 @@ export default function ReadingTest() {
               <p className="reading-test__passage-subtitle">{currentPassage.subtitle}</p>
             )}
           </div>
-          {(() => {
-            // Check if we have drag-drop groups with answers in content
-            const dragDropGroup = currentPartGroups.find(g => g.isDragDrop && g.hasAnswersInContent);
-            
-            if (dragDropGroup && containsInlinePlaceholders(currentPassage.content)) {
-              // Parse passage content with {{ a }} inputs
-              return (
-                <div className={`reading-test__passage-content reading-test__passage-content--${fontSize}`}>
-                  <SectionContentWithInputs
-                    content={currentPassage.content}
-                    questions={dragDropGroup.questions}
-                    answers={answers}
-                    onAnswerChange={handleAnswerSelect}
-                  />
-                </div>
-              );
-            } else {
-              // Normal passage display
-              return (
-                <div 
-                  className={`reading-test__passage-content reading-test__passage-content--${fontSize}`}
-                  dangerouslySetInnerHTML={{ __html: currentPassage.content }}
-                />
-              );
-            }
-          })()}
+          <div 
+            className={`reading-test__passage-content reading-test__passage-content--${fontSize}`}
+            dangerouslySetInnerHTML={{ __html: currentPassage.content }}
+          />
         </div>
 
         {/* Questions Panel */}
@@ -1062,16 +564,10 @@ export default function ReadingTest() {
               {/* Group Header */}
               <div className="reading-test__group-header">
                 <h3>Questions {group.startNumber} - {group.endNumber}</h3>
-                {group.instructions && (
-                  <div 
-                    className="reading-test__group-instructions"
-                    dangerouslySetInnerHTML={{ __html: group.instructions }}
-                  />
-                )}
               </div>
 
               {/* Group Content */}
-              {group.groupContent && !containsInlinePlaceholders(group.groupContent) && !(group.isDragDrop && group.hasAnswersInContent) && (
+              {group.groupContent && !containsInlinePlaceholders(group.groupContent) && (
                 <div
                   className="reading-test__group-content"
                   dangerouslySetInnerHTML={{ __html: group.groupContent }}

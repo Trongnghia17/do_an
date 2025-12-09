@@ -16,17 +16,28 @@ export default function VerifyOtp() {
     console.log("222", location.state);
     const handleVerify = async () => {
         try {
-            const res = await api.post("api/otp/verify", {
+            const res = await api.post("/otp/verify", {
                 email,
                 channel,
                 destination,
-                otp: otp,
+                otp_code: otp,
                 purpose: "register",
                 password,
             });
 
             toast.success("Xác thực thành công! Tài khoản đã được tạo.");
-            nav("/login");
+            
+            // Lưu token và user info nếu có
+            if (res.data.access_token) {
+                localStorage.setItem('token', res.data.access_token);
+                if (res.data.user) {
+                    localStorage.setItem('user', JSON.stringify(res.data.user));
+                }
+                // Redirect to home instead of login
+                nav("/");
+            } else {
+                nav("/login");
+            }
         } catch (error) {
             toast.error(error?.response?.data?.message || "Xác thực OTP thất bại");
         }

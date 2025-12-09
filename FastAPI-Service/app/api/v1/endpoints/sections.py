@@ -99,13 +99,16 @@ async def list_sections(
     return response_sections
 
 
-@router.get("/sections/{section_id}", response_model=SectionResponse)
+@router.get("/sections/{section_id}")
 async def get_section(
     section_id: int,
+    with_questions: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """Get section by ID (public endpoint - auth optional)"""
+    from app.models.exam_models import ExamQuestion
+    
     result = await db.execute(
         select(ExamSection).where(
             ExamSection.id == section_id,
@@ -120,26 +123,52 @@ async def get_section(
             detail="Section not found"
         )
     
-    # Get question groups count
-    count_query = select(func.count(ExamQuestionGroup.id)).where(
-        ExamQuestionGroup.exam_section_id == section.id,
-        ExamQuestionGroup.deleted_at.is_(None)
-    )
-    count_result = await db.execute(count_query)
-    question_groups_count = count_result.scalar()
-    
-    return {
+    response_data = {
         "id": section.id,
         "exam_skill_id": section.exam_skill_id,
-        "name": section.name,
+        "title": section.name,
         "content": section.content,
         "feedback": section.feedback,
         "ui_layer": section.ui_layer,
         "audio": section.audio,
         "created_at": section.created_at,
         "updated_at": section.updated_at,
-        "question_groups_count": question_groups_count
     }
+    
+    # If with_questions is True, include question groups and questions
+    if with_questions:
+        await db.refresh(section, ['question_groups'])
+        
+        question_groups_data = []
+        for group in section.question_groups:
+            if group.deleted_at is not None:
+                continue
+                
+            await db.refresh(group, ['questions'])
+            
+            questions_data = []
+            for question in group.questions:
+                if question.deleted_at is not None:
+                    continue
+                    
+                questions_data.append({
+                    "id": question.id,
+                    "content": question.question_text,
+                    "answer_content": question.correct_answer,
+                    "metadata": question.options
+                })
+            
+            question_groups_data.append({
+                "id": group.id,
+                "name": group.name,
+                "question_type": group.question_type,
+                "content": group.content,
+                "questions": questions_data
+            })
+        
+        response_data["question_groups"] = question_groups_data
+    
+    return {"success": True, "data": response_data}
 
 
 @router.post("/skills/{skill_id}/sections", response_model=SectionResponse)

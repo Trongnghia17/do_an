@@ -128,9 +128,10 @@ async def list_skills(
     return response_skills
 
 
-@router.get("/{skill_id}", response_model=SkillResponse)
+@router.get("/{skill_id}")
 async def get_skill(
     skill_id: int,
+    with_sections: bool = Query(False, description="Include sections and questions"),
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -152,7 +153,7 @@ async def get_skill(
     if skill.exam_test:
         await db.refresh(skill.exam_test, ['exam'])
     
-    return {
+    response_data = {
         "id": skill.id,
         "exam_test_id": skill.exam_test_id,
         "name": skill.name,
@@ -167,6 +168,46 @@ async def get_skill(
         "exam_name": skill.exam_test.exam.name if skill.exam_test and skill.exam_test.exam else None,
         "exam_type": skill.exam_test.exam.type if skill.exam_test and skill.exam_test.exam else None,
     }
+    
+    # If with_sections is True, include sections with questions
+    if with_sections:
+        await db.refresh(skill, ['exam_sections'])
+        sections_data = []
+        
+        for section in skill.exam_sections:
+            await db.refresh(section, ['question_groups'])
+            
+            question_groups_data = []
+            for group in section.question_groups:
+                await db.refresh(group, ['questions'])
+                
+                questions_data = []
+                for question in group.questions:
+                    questions_data.append({
+                        "id": question.id,
+                        "content": question.question_text,
+                        "answer_content": question.correct_answer,
+                        "metadata": question.options
+                    })
+                
+            question_groups_data.append({
+                "id": group.id,
+                "name": group.name,
+                "question_type": group.question_type,
+                "content": group.content,
+                "questions": questions_data
+            })
+            
+            sections_data.append({
+                "id": section.id,
+                "title": section.name,
+                "content": section.content,
+                "question_groups": question_groups_data
+            })
+        
+        response_data["sections"] = sections_data
+    
+    return {"success": True, "data": response_data}
 
 
 @router.post("/", response_model=SkillResponse)
