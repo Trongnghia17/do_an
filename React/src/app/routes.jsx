@@ -37,6 +37,10 @@ import ExamDetail from '@/features/admin/pages/ExamDetail';
 import TestDetail from '@/features/admin/pages/TestDetail';
 import SkillManagement from '@/features/admin/pages/SkillManagement';
 import SkillDetail from '@/features/admin/pages/SkillDetail';
+import AIExamGenerator from '@/features/admin/pages/AIExamGenerator';
+import QuickQuestionGenerator from '@/features/admin/pages/QuickQuestionGenerator';
+import ContentGenerator from '@/features/admin/pages/ContentGenerator';
+import TestQuickGenerator from '@/features/admin/pages/TestQuickGenerator';
 
 const PublicShell = (
   <MainLayout />
@@ -160,6 +164,10 @@ export const router = createBrowserRouter([
           { path: 'exams/:examId/tests/:testId/skills', element: <SkillManagement /> },
           { path: 'skills', element: <SkillManagement /> },
           { path: 'skills/:skillId', element: <SkillDetail /> },
+          { path: 'ai-generator', element: <AIExamGenerator /> },
+          { path: 'quick-generator', element: <QuickQuestionGenerator /> },
+          { path: 'content-generator', element: <ContentGenerator /> },
+          { path: 'test-generator', element: <TestQuickGenerator /> },
           { 
             path: 'analytics', 
             element: <div style={{ padding: 24 }}><h1>Analytics (Coming Soon)</h1></div> 

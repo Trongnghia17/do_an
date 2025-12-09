@@ -156,15 +156,46 @@ const SkillDetail = () => {
       }
       
       // Transform sections data with editable state
-      const transformedSections = sectionsData.map((section, index) => ({
-        id: section.id,
-        name: section.name,
-        content: section.content,
-        feedback: section.feedback,
-        uiLayer: section.ui_layer || 'default',
-        audio: getFullAudioUrl(section.audio),
-        questionGroupsCount: section.question_groups_count
-      }));
+      const transformedSections = sectionsData.map((section, index) => {
+        // Try to parse content as JSON passage object and format it
+        let content = section.content;
+        let passageData = null;
+        
+        try {
+          const parsed = JSON.parse(section.content);
+          if (parsed && typeof parsed === 'object' && (parsed.content || parsed.introduction || parsed.title)) {
+            // Store original passage data
+            passageData = parsed;
+            
+            // Format passage nicely with HTML for display in CKEditor
+            const parts = [];
+            if (parsed.introduction) {
+              parts.push(`<div style="font-style: italic; color: #666; margin-bottom: 16px;">${parsed.introduction.replace(/\n/g, '<br/>')}</div>`);
+            }
+            if (parsed.title) {
+              parts.push(`<h2 style="margin-top: 16px; margin-bottom: 16px;">${parsed.title}</h2>`);
+            }
+            if (parsed.content) {
+              parts.push(`<div style="text-align: justify; line-height: 1.6;">${parsed.content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</div>`);
+            }
+            
+            content = parts.join('');
+          }
+        } catch (e) {
+          // Not JSON, keep original content
+        }
+        
+        return {
+          id: section.id,
+          name: section.name,
+          content: content,
+          rawPassageData: passageData,  // Store original JSON for potential re-save
+          feedback: section.feedback,
+          uiLayer: section.ui_layer || 'default',
+          audio: getFullAudioUrl(section.audio),
+          questionGroupsCount: section.question_groups_count
+        };
+      });
       
       setSections(transformedSections);
       
@@ -194,22 +225,52 @@ const SkillDetail = () => {
               const groupQuestions = await adminService.getQuestionsByGroupId(group.id);
               
               // Transform questions to UI format
-              questionsData[groupKey] = groupQuestions.map(q => ({
-                id: q.id,
-                questionContent: q.question_text,
-                questionType: q.question_type,
-                correctAnswer: q.correct_answer,
-                points: q.points,
-                explanation: q.explanation,
-                // Parse answers from options field
-                answers: q.options ? JSON.parse(q.options).map(opt => ({
-                  id: opt.id,
-                  content: opt.content,
-                  isCorrect: opt.is_correct
-                })) : [],
-                // For short_text type, answer content is in correct_answer field
-                answerContent: q.question_type === 'short_text' ? q.correct_answer : ''
-              }));
+              questionsData[groupKey] = groupQuestions.map(q => {
+                let answers = [];
+                
+                // Parse options/answers field
+                if (q.options) {
+                  try {
+                    const parsed = JSON.parse(q.options);
+                    
+                    // Check if it's new format (array of objects with answer_content, is_correct, feedback)
+                    if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].answer_content !== undefined) {
+                      // New format from GPT
+                      answers = parsed.map((opt, idx) => ({
+                        id: opt.id || `temp-${idx}`,
+                        content: opt.answer_content,
+                        isCorrect: opt.is_correct || false,
+                        feedback: opt.feedback || ''
+                      }));
+                    }
+                    // Old format (simple array or objects with content/is_correct)
+                    else if (Array.isArray(parsed)) {
+                      answers = parsed.map((opt, idx) => ({
+                        id: opt.id || `temp-${idx}`,
+                        content: opt.content || opt,
+                        isCorrect: opt.is_correct || false,
+                        feedback: opt.feedback || ''
+                      }));
+                    }
+                  } catch (e) {
+                    console.error('Error parsing options:', e);
+                  }
+                }
+                
+                return {
+                  id: q.id,
+                  questionContent: q.question_text,
+                  questionType: q.question_type,
+                  correctAnswer: q.correct_answer,
+                  points: q.points,
+                  explanation: q.explanation,
+                  answers: answers,
+                  // For short_text, true/false/not given, yes/no/not given: answer content is in correct_answer field
+                  answerContent: ['short_text', 'true_false_not_given', 'yes_no_not_given'].includes(q.question_type) 
+                    ? q.correct_answer 
+                    : ''
+                };
+              });
             } catch (error) {
               console.error(`Error fetching questions for group ${group.id}:`, error);
               questionsData[groupKey] = [];
@@ -587,22 +648,24 @@ const SkillDetail = () => {
               
               // Handle answers for multiple choice questions
               if (question.questionType === 'multiple_choice' && question.answers && question.answers.length > 0) {
-                // Convert answers to JSON string for options field
-                const options = question.answers.map((ans, idx) => ({
-                  id: idx,
-                  content: ans.content || '',
-                  is_correct: ans.isCorrect || false
+                // Convert answers to new format (answer_content, is_correct, feedback)
+                const answers = question.answers.map((ans, idx) => ({
+                  answer_content: ans.content || '',
+                  is_correct: ans.isCorrect || false,
+                  feedback: ans.feedback || ''
                 }));
-                questionData.options = JSON.stringify(options);
+                questionData.options = JSON.stringify(answers);
                 
-                // Find correct answer
-                const correctAnswerIndex = question.answers.findIndex(ans => ans.isCorrect);
-                if (correctAnswerIndex >= 0) {
-                  questionData.correct_answer = correctAnswerIndex.toString();
+                // Find correct answer content
+                const correctAnswer = question.answers.find(ans => ans.isCorrect);
+                if (correctAnswer) {
+                  questionData.correct_answer = correctAnswer.content || '';
                 }
-              } else if (question.questionType === 'short_text') {
-                // For short text, correct answer is the expected answer
-                questionData.correct_answer = question.answerContent || '';
+              } else if (question.questionType === 'short_text' || 
+                         question.questionType === 'true_false_not_given' || 
+                         question.questionType === 'yes_no_not_given') {
+                // For short text, true/false/not given, yes/no/not given: correct answer is the expected answer
+                questionData.correct_answer = question.answerContent || question.correctAnswer || '';
               }
               
               if (question.isNew || question.id.toString().startsWith('new-')) {
@@ -1326,6 +1389,46 @@ const SkillDetail = () => {
                           placeholder="Enter expected answer (for grading reference)"
                           rows={3}
                         />
+                      </div>
+                    )}
+
+                    {/* True/False/Not Given Answer */}
+                    {question.questionType === 'true_false_not_given' && (
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Correct Answer</label>
+                        <Select
+                          value={question.correctAnswer || question.answerContent || ''}
+                          onChange={(value) => {
+                            updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'answerContent', value);
+                            updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'correctAnswer', value);
+                          }}
+                          style={{ width: '100%' }}
+                          placeholder="Select correct answer"
+                        >
+                          <Option value="TRUE">TRUE</Option>
+                          <Option value="FALSE">FALSE</Option>
+                          <Option value="NOT GIVEN">NOT GIVEN</Option>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Yes/No/Not Given Answer */}
+                    {question.questionType === 'yes_no_not_given' && (
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Correct Answer</label>
+                        <Select
+                          value={question.correctAnswer || question.answerContent || ''}
+                          onChange={(value) => {
+                            updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'answerContent', value);
+                            updateQuestion(selectedSection, selectedGroup, selectedQuestion, 'correctAnswer', value);
+                          }}
+                          style={{ width: '100%' }}
+                          placeholder="Select correct answer"
+                        >
+                          <Option value="YES">YES</Option>
+                          <Option value="NO">NO</Option>
+                          <Option value="NOT GIVEN">NOT GIVEN</Option>
+                        </Select>
                       </div>
                     )}
 

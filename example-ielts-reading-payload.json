@@ -1,0 +1,124 @@
+{
+  "examId": 1,
+  "examTestId": 1,
+  "skillType": "reading",
+  "skillName": "Reading",
+  "timeLimit": 60,
+  "sections": [
+    {
+      "name": "Reading Passage 1",
+      "topic": "William Henry Perkin",
+      "difficulty": "medium",
+      "num_questions": 13,
+      "question_types": ["true_false_not_given", "short_answer"],
+      "content": "You should spend about 20 minutes on Questions 1-13, which are based on Reading Passage 1 below.\n\nWilliam Henry Perkin\nThe man who invented synthetic dyes\n\nWilliam Henry Perkin was born on March 12, 1838, in London, England...",
+      "question_groups": [
+        {
+          "group_name": "Questions 1-7",
+          "question_type": "true_false_not_given",
+          "instruction": "Do the following statements agree with the information given in Reading Passage 1?\n\nIn boxes 1-7 on your answer sheet, write\n\nTRUE if the statement agrees with the information\nFALSE if the statement contradicts the information\nNOT GIVEN if there is no information on this",
+          "questions": [
+            {
+              "question_number": 1,
+              "content": "Michael Faraday was the first person to recognise Perkin's ability as a student of chemistry.",
+              "correct_answer": "FALSE",
+              "explanation": "Passage states that Perkin's talent was perceived by his teacher Thomas Hall, not Faraday.",
+              "points": 1.0
+            },
+            {
+              "question_number": 2,
+              "content": "Michael Faraday suggested Perkin should enrol in the Royal College of Chemistry.",
+              "correct_answer": "NOT GIVEN",
+              "explanation": "The passage does not mention Faraday suggesting enrolment.",
+              "points": 1.0
+            },
+            {
+              "question_number": 3,
+              "content": "Perkin employed August Wilhelm Hofmann as his assistant.",
+              "correct_answer": "FALSE",
+              "explanation": "Perkin became Hofmann's assistant, not the other way around.",
+              "points": 1.0
+            },
+            {
+              "question_number": 4,
+              "content": "Perkin was still young when he made the discovery that made him rich and famous.",
+              "correct_answer": "TRUE",
+              "explanation": "Perkin entered college at 15 and made the discovery shortly after.",
+              "points": 1.0
+            },
+            {
+              "question_number": 5,
+              "content": "The trees from which quinine is derived grow only in South America.",
+              "correct_answer": "NOT GIVEN",
+              "explanation": "Passage says native to South America but not 'only' there.",
+              "points": 1.0
+            },
+            {
+              "question_number": 6,
+              "content": "Perkin hoped to manufacture a drug from a coal tar waste product.",
+              "correct_answer": "TRUE",
+              "explanation": "He attempted to manufacture quinine from aniline, a coal tar waste product.",
+              "points": 1.0
+            },
+            {
+              "question_number": 7,
+              "content": "Perkin was inspired by the discoveries of the famous scientist Louis Pasteur.",
+              "correct_answer": "NOT GIVEN",
+              "explanation": "Pasteur's quote is mentioned but not that he inspired Perkin.",
+              "points": 1.0
+            }
+          ]
+        },
+        {
+          "group_name": "Questions 8-13",
+          "question_type": "short_answer",
+          "instruction": "Answer the questions below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 8-13 on your answer sheet.",
+          "questions": [
+            {
+              "question_number": 8,
+              "content": "Before Perkin's discovery, with what group in society was the colour purple associated?",
+              "correct_answer": "the rich",
+              "explanation": "The passage states only the rich could afford purple dye.",
+              "points": 1.0
+            },
+            {
+              "question_number": 9,
+              "content": "What potential did Perkin immediately understand that his new dye had?",
+              "correct_answer": "commercial possibilities",
+              "explanation": "Passage mentions his recognition of commercial possibilities.",
+              "points": 1.0
+            },
+            {
+              "question_number": 10,
+              "content": "What was the name finally used to refer to the first colour Perkin invented?",
+              "correct_answer": "mauve",
+              "explanation": "The dye became commonly known as mauve.",
+              "points": 1.0
+            },
+            {
+              "question_number": 11,
+              "content": "What was the name of the person Perkin consulted before setting up his own dye works?",
+              "correct_answer": "Robert Pullar",
+              "explanation": "He asked advice of Robert Pullar.",
+              "points": 1.0
+            },
+            {
+              "question_number": 12,
+              "content": "In what country did Perkin's newly invented colour first become fashionable?",
+              "correct_answer": "France",
+              "explanation": "Empress Eugenie of France popularized it first.",
+              "points": 1.0
+            },
+            {
+              "question_number": 13,
+              "content": "According to the passage, which disease is now being targeted by researchers using synthetic dyes?",
+              "correct_answer": "malaria",
+              "explanation": "The passage ends mentioning search for malaria vaccine.",
+              "points": 1.0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

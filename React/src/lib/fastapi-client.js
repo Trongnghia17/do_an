@@ -1,4 +1,5 @@
 import axios from 'axios';
+import useAuth from '@/features/user/auth/store/auth.store';
 
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000';
 
@@ -9,23 +10,72 @@ const apiClient = axios.create({
   },
 });
 
+// Add request interceptor to include auth token
+apiClient.interceptors.request.use((config) => {
+  // Try to get token from Zustand store first
+  let { token } = useAuth.getState();
+  
+  // Fallback to localStorage if Zustand store doesn't have token
+  if (!token) {
+    token = localStorage.getItem('token');
+  }
+  
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  return config;
+});
+
+// Add response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      console.error('401 Unauthorized - Token invalid or expired');
+      
+      // Only logout if this is not a login request
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      if (!isLoginRequest) {
+        useAuth.getState().logout();
+        localStorage.clear();
+        
+        // Redirect to admin login if on admin page
+        if (window.location.pathname.startsWith('/admin')) {
+          window.location.href = '/admin/login';
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Exams API
+export const examsAPI = {
+  // Lấy danh sách bộ đề
+  listExams: async (params = {}) => {
+    const response = await apiClient.get('/exams', { params });
+    return response.data;
+  },
+  
+  // Lấy chi tiết bộ đề
+  getExam: async (examId) => {
+    const response = await apiClient.get(`/exams/${examId}`);
+    return response.data;
+  },
+};
+
 // AI Generation API
 export const aiGenerationAPI = {
-  // Sinh câu hỏi tự động
-  generateQuestions: async (data) => {
-    const response = await apiClient.post('/generation/generate-questions', data);
-    return response.data;
-  },
-
-  // Sinh nội dung (passage, dialogue)
-  generateContent: async (data) => {
-    const response = await apiClient.post('/generation/generate-content', data);
-    return response.data;
-  },
-
-  // Sinh toàn bộ đề thi
+  // Sinh toàn bộ đề thi bằng AI
   generateExam: async (data) => {
     const response = await apiClient.post('/generation/generate-exam', data);
+    return response.data;
+  },
+  
+  // Sinh câu hỏi bằng AI (không lưu DB, chỉ trả về JSON)
+  generateQuestions: async (data) => {
+    const response = await apiClient.post('/generation/generate-questions', data);
     return response.data;
   },
 };

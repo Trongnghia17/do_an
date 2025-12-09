@@ -11,6 +11,8 @@ import {
   BellOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  RobotOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '@/features/user/auth/store/auth.store';
@@ -53,6 +55,11 @@ const AdminLayout = () => {
       key: '/admin/skills',
       icon: <BookOutlined />,
       label: 'Quản lý đề thi',
+    },
+    {
+      key: '/admin/ai-generator',
+      icon: <RobotOutlined />,
+      label: 'Tạo đề bằng AI',
     },
     {
       key: '/admin/analytics',

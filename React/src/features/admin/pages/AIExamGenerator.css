@@ -1,0 +1,129 @@
+.ai-exam-generator {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-header p {
+  font-size: 16px;
+  color: #666;
+}
+
+.step-content {
+  min-height: 400px;
+}
+
+/* Questions Preview Modal */
+.questions-preview {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.passage-section {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  border-left: 4px solid #1890ff;
+}
+
+.passage-section h3 {
+  color: #1890ff;
+  margin-bottom: 12px;
+}
+
+.question-groups {
+  margin-top: 24px;
+}
+
+.question-preview-item {
+  padding: 12px;
+  margin-bottom: 12px;
+  border-left: 3px solid #1890ff;
+  background: #fafafa;
+  transition: all 0.3s;
+}
+
+.question-preview-item:hover {
+  background: #e6f7ff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.question-content {
+  font-size: 15px;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.question-options {
+  margin: 12px 0;
+}
+
+.option {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.option.correct {
+  background: #f6ffed;
+  border-color: #52c41a;
+  font-weight: 500;
+}
+
+.correct-answer {
+  margin: 12px 0;
+  padding: 8px 12px;
+  background: #e6f7ff;
+  border-left: 3px solid #1890ff;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.explanation {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fffbe6;
+  border-left: 3px solid #faad14;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ai-exam-generator {
+    padding: 16px;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+  }
+
+  .step-content {
+    min-height: 300px;
+  }
+}

@@ -6,15 +6,16 @@
   <component name="ChangeListManager">
     <list default="true" id="b28cf914-2307-40b3-b657-3544debb399a" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/groups.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/groups.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/sections.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/sections.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/skills.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/skills.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/api/users.api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/api/users.api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/api/exams.api.js" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/api/exams.api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.css" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/toeic/api/toeic.api.js" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/toeic/api/toeic.api.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CKEDITOR_README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/generation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/chatgpt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/chatgpt_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/app/routes.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/app/routes.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/components/AdminLayout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/components/AdminLayout.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/pages/SkillDetail.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/pages/SkillDetail.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/routes.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/routes.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/hooks/useAIGeneration.js" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/hooks/useAIGeneration.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/lib/fastapi-client.js" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/lib/fastapi-client.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,6 +75,8 @@
       <workItem from="1764925114788" duration="12419000" />
       <workItem from="1765016653872" duration="185000" />
       <workItem from="1765016847845" duration="3686000" />
+      <workItem from="1765185863819" duration="5262000" />
+      <workItem from="1765266900298" duration="706000" />
     </task>
     <servers />
   </component>
