@@ -104,15 +104,19 @@ async def generate_complete_exam(
             await db.refresh(section)
             logger.info(f"Created section: {section.name} (ID: {section.id})")
             
-            # Check if section has question_groups (new format) or questions (old format)
-            question_groups_data = section_config.get("question_groups", [])
-            questions_data = section_config.get("questions", [])
+            # Check format: Listening (parts) or Reading/Writing (question_groups) or old (questions)
+            parts_data = section_config.get("parts", [])  # Listening format
+            question_groups_data = section_config.get("question_groups", [])  # Reading/Writing format
+            questions_data = section_config.get("questions", [])  # Old format
             
-            # Check if passage data is provided separately
+            # Check if passage data is provided separately (Reading)
             passage_data = section_config.get("passage")
             
+            # Check if test_title provided (Listening)
+            test_title = section_config.get("test_title")
+            
             # If no data provided, generate via AI
-            if not question_groups_data and not questions_data:
+            if not parts_data and not question_groups_data and not questions_data:
                 logger.info(f"No pre-generated questions, calling AI to generate...")
                 ai_result = await chatgpt_service.generate_exam_questions(
                     exam_type=exam.type,
@@ -123,8 +127,16 @@ async def generate_complete_exam(
                     question_types=section_config.get("question_types"),
                 )
                 
-                # Check if AI returned new format (dict with passage + question_groups)
-                if isinstance(ai_result, dict) and "question_groups" in ai_result:
+                # Check if AI returned Listening format (parts + test_title)
+                if isinstance(ai_result, dict) and "parts" in ai_result:
+                    parts_data = ai_result["parts"]
+                    test_title = ai_result.get("test_title", "LISTENING TEST")
+                    # Update section content with test title
+                    section.content = test_title
+                    await db.commit()
+                    logger.info(f"AI generated Listening test with {len(parts_data)} parts")
+                # Check if AI returned Reading/Writing format (question_groups)
+                elif isinstance(ai_result, dict) and "question_groups" in ai_result:
                     question_groups_data = ai_result["question_groups"]
                     # Update section content with passage if available
                     if "passage" in ai_result:
@@ -138,10 +150,15 @@ async def generate_complete_exam(
                     questions_data = ai_result if isinstance(ai_result, list) else []
                     logger.info(f"AI generated {len(questions_data)} questions")
             else:
-                logger.info(f"Using pre-generated data: {len(question_groups_data)} groups, {len(questions_data)} questions")
+                logger.info(f"Using pre-generated data: {len(parts_data)} parts, {len(question_groups_data)} groups, {len(questions_data)} questions")
                 
-                # If passage data is provided separately, update section content
-                if passage_data and isinstance(passage_data, dict):
+                # If test_title provided (Listening), update section content
+                if test_title:
+                    section.content = test_title
+                    await db.commit()
+                    logger.info("Updated section content with test title")
+                # If passage data is provided separately (Reading), update section content
+                elif passage_data and isinstance(passage_data, dict):
                     # Store as JSON object for better formatting in frontend
                     section.content = json.dumps(passage_data, ensure_ascii=False)
                     await db.commit()
@@ -150,8 +167,82 @@ async def generate_complete_exam(
                     # If content is empty and no passage provided, log warning
                     logger.warning(f"Section '{section.name}' has empty content and no passage provided")
             
-            # Process question_groups (new format - preferred)
-            if question_groups_data:
+            # Process LISTENING format: Each part = 1 section
+            if parts_data:
+                logger.info(f"Processing Listening format with {len(parts_data)} parts")
+                
+                # DELETE the current section (was created for whole test)
+                await db.delete(section)
+                await db.commit()
+                logger.info(f"Deleted temporary section, will create one section per part")
+                
+                # Create ONE SECTION per PART
+                for part_idx, part in enumerate(parts_data, 1):
+                    part_question_groups = part.get("question_groups", [])
+                    
+                    logger.info(f"Creating section for Part {part_idx}: {part.get('title', 'N/A')} - {len(part_question_groups)} question groups")
+                    
+                    # Create new section for this part
+                    part_section = ExamSection(
+                        exam_skill_id=exam_skill.id,
+                        name=f"{part.get('title', f'Part {part_idx}')} - {part.get('subtitle', '')}",
+                        content=part.get('context', ''),  # Store context as content
+                        audio=part.get('audio_url', '')  # Store audio path with /uploads/audio/
+                    )
+                    db.add(part_section)
+                    await db.commit()
+                    await db.refresh(part_section)
+                    logger.info(f"Created section for Part {part_idx}: {part_section.name} (ID: {part_section.id})")
+                    logger.info(f"Audio URL: {part.get('audio_url', 'No audio')}")
+                    
+                    # Now create question groups for THIS part's section
+                    for group_data in part_question_groups:
+                        group_questions = group_data.get("questions", [])
+                        
+                        # Create question group name
+                        group_name = group_data.get('section_title', group_data.get('group_instruction', 'Questions'))
+                        
+                        # Only store group-specific data (instruction and section_title)
+                        # Don't duplicate context/audio_script (already in ExamSection)
+                        group = ExamQuestionGroup(
+                            exam_section_id=part_section.id,  # Use part_section.id instead of section.id
+                            name=group_name[:255],  # Limit length
+                            question_type=group_questions[0].get("question_type", "multiple_choice") if group_questions else "multiple_choice",
+                            content=json.dumps({
+                                "group_instruction": group_data.get("group_instruction"),
+                                "section_title": group_data.get("section_title")
+                            }, ensure_ascii=False)
+                        )
+                        db.add(group)
+                        await db.commit()
+                        await db.refresh(group)
+                        logger.info(f"Created question group: {group.name} (ID: {group.id})")
+                        
+                        # Save questions in this group
+                        for q in group_questions:
+                            options_json = None
+                            
+                            # Listening questions may have answers array
+                            if q.get("answers"):
+                                options_json = json.dumps(q.get("answers"), ensure_ascii=False)
+                            
+                            question = ExamQuestion(
+                                question_group_id=group.id,
+                                question_text=q.get("content", ""),
+                                question_type=q.get("question_type", "short_answer"),
+                                options=options_json,
+                                correct_answer=q.get("correct_answer", ""),
+                                explanation=q.get("explanation", ""),
+                                points=q.get("points", 1)
+                            )
+                            db.add(question)
+                            total_questions += 1
+                        
+                        await db.commit()
+                        logger.info(f"Saved {len(group_questions)} questions to group")
+            
+            # Process READING/WRITING format: question_groups (new format - preferred)
+            elif question_groups_data:
                 for group_data in question_groups_data:
                     group_questions = group_data.get("questions", [])
                     
@@ -420,6 +511,7 @@ class QuestionGenerationRequest(BaseModel):
     difficulty: str  # easy, medium, hard
     num_questions: int  # Number of questions to generate
     question_types: Optional[List[str]] = None  # Optional: specific question types
+    part_number: Optional[int] = None  # For Listening: which part to generate (1, 2, 3, or 4)
 
 
 class QuestionGenerationResponse(BaseModel):
@@ -452,6 +544,8 @@ async def generate_questions_only(
     """
     try:
         logger.info(f"Generating questions: {request.exam_type} {request.skill} - {request.topic}")
+        if request.part_number:
+            logger.info(f"Generating Part {request.part_number} only")
         
         # Call ChatGPT service
         result = await chatgpt_service.generate_exam_questions(
@@ -460,7 +554,8 @@ async def generate_questions_only(
             topic=request.topic,
             difficulty=request.difficulty,
             num_questions=request.num_questions,
-            question_types=request.question_types
+            question_types=request.question_types,
+            part_number=request.part_number  # Pass part_number to service
         )
         
         # Log để debug
@@ -469,13 +564,45 @@ async def generate_questions_only(
             logger.info(f"Result keys: {result.keys()}")
             logger.info(f"Has passage: {'passage' in result}")
             logger.info(f"Has question_groups: {'question_groups' in result}")
+            logger.info(f"Has parts: {'parts' in result}")
+            logger.info(f"Has test_title: {'test_title' in result}")
             if "passage" in result:
                 passage = result["passage"]
                 logger.info(f"Passage title: {passage.get('title', 'N/A')}")
                 logger.info(f"Passage content length: {len(passage.get('content', ''))}")
         
-        # Check if result has question_groups format (new format)
-        if isinstance(result, dict) and "question_groups" in result:
+        # LISTENING FORMAT: parts with test_title
+        if isinstance(result, dict) and "parts" in result and "test_title" in result:
+            # Count total questions from all parts
+            total_qs = 0
+            for part in result["parts"]:
+                if "question_groups" in part:
+                    for group in part["question_groups"]:
+                        total_qs += len(group.get("questions", []))
+            
+            logger.info(f"✅ Listening format detected: {len(result['parts'])} parts, {total_qs} questions")
+            
+            # Generate audio files for each part
+            try:
+                logger.info("🎤 Generating audio files for Listening parts...")
+                parts_with_audio = await chatgpt_service.generate_listening_audio(
+                    parts=result["parts"],
+                    output_dir="uploads/audio"
+                )
+                result["parts"] = parts_with_audio
+                logger.info(f"✅ Generated {len(parts_with_audio)} audio files")
+            except Exception as e:
+                logger.error(f"⚠️ Failed to generate audio files: {str(e)}")
+                # Continue without audio files
+            
+            return QuestionGenerationResponse(
+                status="success",
+                message=f"Generated {total_qs} questions across {len(result['parts'])} parts with audio",
+                data=result  # Return with audio_url in each part
+            )
+        
+        # READING/WRITING FORMAT: question_groups (with or without passage)
+        elif isinstance(result, dict) and "question_groups" in result:
             total_qs = sum(len(g.get("questions", [])) for g in result["question_groups"])
             
             # Always return full structure with passage and question_groups
@@ -492,6 +619,8 @@ async def generate_questions_only(
             else:
                 message = f"Generated {total_qs} questions with passage"
             
+            logger.info(f"✅ Reading/Writing format detected: {total_qs} questions")
+            
             return QuestionGenerationResponse(
                 status="success",
                 message=message,
@@ -500,6 +629,7 @@ async def generate_questions_only(
         
         # Old format (just questions list) - wrap it
         elif isinstance(result, list):
+            logger.info(f"⚠️ Old format detected: {len(result)} questions")
             return QuestionGenerationResponse(
                 status="success",
                 message=f"Generated {len(result)} questions",
@@ -509,7 +639,7 @@ async def generate_questions_only(
             )
         
         else:
-            logger.error(f"Unexpected result format: {result}")
+            logger.error(f"❌ Unexpected result format: {result}")
             raise ValueError("Unexpected response format from ChatGPT service")
         
     except Exception as e:

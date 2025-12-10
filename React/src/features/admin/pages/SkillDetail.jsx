@@ -1137,10 +1137,26 @@ const SkillDetail = () => {
                           />
                           
                           {(section.audioPreview || section.audio) && (
-                            <audio controls style={{ width: '100%', marginTop: 8 }}>
-                              <source src={section.audioPreview || section.audio} />
-                              Your browser does not support the audio element.
-                            </audio>
+                            <div>
+                              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                                Audio URL: {section.audioPreview || section.audio}
+                              </div>
+                              <audio 
+                                controls 
+                                style={{ width: '100%', marginTop: 8 }}
+                                onError={(e) => {
+                                  console.error('Audio load error:', e);
+                                  console.error('Audio URL:', section.audioPreview || section.audio);
+                                  message.error('Không thể tải file audio. Kiểm tra URL hoặc file có tồn tại không.');
+                                }}
+                                onLoadedData={() => {
+                                  console.log('Audio loaded successfully:', section.audioPreview || section.audio);
+                                }}
+                              >
+                                <source src={section.audioPreview || section.audio} type="audio/mpeg" />
+                                Your browser does not support the audio element.
+                              </audio>
+                            </div>
                           )}
                         </Space>
                       </div>

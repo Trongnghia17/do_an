@@ -45,6 +45,7 @@ export const useAIGeneration = () => {
         difficulty: config.difficulty,
         num_questions: config.numQuestions || config.num_questions,
         question_types: config.questionTypes || config.question_types,
+        part_number: config.partNumber,  // For Listening: which part (1-4)
       });
       
       setResult(data);

@@ -46,11 +46,9 @@ const AIExamGenerator = () => {
     ],
     listening: [
       { value: 'multiple_choice', label: 'Multiple Choice' },
-      { value: 'form_completion', label: 'Form Completion' },
-      { value: 'note_completion', label: 'Note Completion' },
-      { value: 'matching', label: 'Matching' },
       { value: 'short_answer', label: 'Short Answer' },
-      { value: 'labeling', label: 'Labeling' }
+      { value: 'yes_no_not_given', label: 'Yes/No/Not Given' },
+      { value: 'true_false_not_given', label: 'True/False/Not Given' }
     ],
     writing: [
       { value: 'essay', label: 'Essay' },
@@ -220,10 +218,11 @@ const AIExamGenerator = () => {
       difficulty: values.difficulty,
       num_questions: values.num_questions,
       question_types: values.question_types,
-      content: values.content || ''
+      content: values.content || '',
+      part_number: values.part_number  // For Listening: which part (1-4)
     };
     setSections([...sections, newSection]);
-    form.resetFields(['sectionName', 'topic', 'difficulty', 'num_questions', 'question_types', 'content']);
+    form.resetFields(['sectionName', 'topic', 'difficulty', 'num_questions', 'question_types', 'content', 'part_number']);
     message.success('Đã thêm section mới');
   };
 
@@ -409,13 +408,37 @@ const AIExamGenerator = () => {
         topic: section.topic,
         difficulty: section.difficulty,
         numQuestions: section.num_questions,
-        questionTypes: section.question_types
+        questionTypes: section.question_types,
+        partNumber: section.part_number  // For Listening: pass part number
       });
 
       console.log('Generated result:', result);
 
-      // Check new format: passage + question_groups
-      if (result.data && result.data.passage && result.data.question_groups) {
+      // Check LISTENING format: parts + test_title
+      if (result.data && result.data.parts && result.data.test_title) {
+        // IELTS Listening format with parts
+        setGeneratedQuestions({
+          ...generatedQuestions,
+          [section.id]: {
+            test_title: result.data.test_title,
+            parts: result.data.parts
+          }
+        });
+        
+        // Count total questions from all parts
+        const totalQuestions = result.data.parts.reduce((sum, part) => {
+          if (part.question_groups) {
+            return sum + part.question_groups.reduce((groupSum, group) => {
+              return groupSum + (group.questions?.length || 0);
+            }, 0);
+          }
+          return sum;
+        }, 0);
+        
+        message.success(`Đã tạo đề Listening với ${result.data.parts.length} parts và ${totalQuestions} câu hỏi cho ${section.name}`);
+      }
+      // Check READING format: passage + question_groups
+      else if (result.data && result.data.passage && result.data.question_groups) {
         // New IELTS format with passage
         setGeneratedQuestions({
           ...generatedQuestions,
@@ -536,7 +559,22 @@ const AIExamGenerator = () => {
           return content.trim();
         };
         
-        // New format: passage + question_groups
+        // LISTENING format: parts with test_title
+        if (generatedData && generatedData.parts && generatedData.test_title) {
+          console.log('✅ Using Listening format with parts');
+          return {
+            name: section.name,
+            topic: section.topic,
+            difficulty: section.difficulty,
+            num_questions: section.num_questions,
+            question_types: section.question_types,
+            content: generatedData.test_title || 'LISTENING TEST',
+            test_title: generatedData.test_title,
+            parts: generatedData.parts
+          };
+        }
+        
+        // READING format: passage + question_groups
         if (generatedData && generatedData.passage && generatedData.question_groups) {
           console.log('✅ Using passage + question_groups format');
           const builtContent = buildSectionContent(generatedData.passage);
@@ -552,7 +590,7 @@ const AIExamGenerator = () => {
           };
         }
         
-        // New format: only question_groups (no passage)
+        // WRITING/SPEAKING format: only question_groups (no passage)
         if (generatedData && generatedData.question_groups) {
           console.log('⚠️ Using question_groups only format (NO PASSAGE!)');
           
@@ -995,22 +1033,53 @@ const AIExamGenerator = () => {
                     </Select>
                   </Form.Item>
 
+                  {examConfig.skillType === 'listening' && (
+                    <Form.Item
+                      label="Part Number"
+                      name="part_number"
+                      rules={[{ required: true, message: 'Vui lòng chọn Part' }]}
+                      tooltip="Chọn Part 1, 2, 3, hoặc 4 để generate (mỗi part có 10 câu hỏi)"
+                    >
+                      <Select 
+                        placeholder="Chọn Part"
+                        onChange={(value) => {
+                          // Auto set num_questions = 10 when selecting part
+                          form.setFieldValue('num_questions', 10);
+                        }}
+                      >
+                        <Option value={1}>Part 1 - Social/everyday (Questions 1-10)</Option>
+                        <Option value={2}>Part 2 - Monologue social (Questions 11-20)</Option>
+                        <Option value={3}>Part 3 - Academic discussion (Questions 21-30)</Option>
+                        <Option value={4}>Part 4 - Academic lecture (Questions 31-40)</Option>
+                      </Select>
+                    </Form.Item>
+                  )}
+
                   <Form.Item
                     label="Số lượng câu hỏi"
                     name="num_questions"
                     rules={[{ required: true }]}
+                    tooltip={examConfig.skillType === 'listening' ? 'Mỗi Part có 10 câu hỏi (tự động điền khi chọn Part)' : null}
                   >
-                    <InputNumber min={1} max={50} style={{ width: '100%' }} />
+                    <InputNumber 
+                      min={1} 
+                      max={50} 
+                      style={{ width: '100%' }}
+                      disabled={examConfig.skillType === 'listening'}
+                    />
                   </Form.Item>
 
                   <Form.Item
                     label="Loại câu hỏi"
                     name="question_types"
                     extra={`Các loại câu hỏi cho ${examConfig.skillName || 'Reading'}`}
+                    tooltip={examConfig.skillType === 'listening' 
+                      ? 'Chọn 1 loại = tất cả 10 câu cùng loại. Chọn 2 loại = chia đều ~5 câu mỗi loại. Để trống = dùng tất cả 4 loại.'
+                      : 'Chọn các loại câu hỏi muốn tạo. Số câu sẽ phân bổ đều cho các loại đã chọn.'}
                   >
                     <Select 
                       mode="multiple" 
-                      placeholder="Chọn loại câu hỏi (để trống = tất cả)"
+                      placeholder="Chọn loại câu hỏi (để trống = tất cả 4 loại)"
                       allowClear
                     >
                       {(questionTypesBySkill[examConfig.skillType] || questionTypesBySkill.reading).map(type => (
@@ -1227,8 +1296,159 @@ const AIExamGenerator = () => {
               </Card>
             )}
 
-            {/* Passage */}
-            {previewModal.data && previewModal.data.passage && (
+            {/* LISTENING FORMAT: Test Title & Parts */}
+            {previewModal.data && previewModal.data.test_title && previewModal.data.parts && (
+              <div style={{ marginBottom: 32 }}>
+                {/* Test Title */}
+                <div style={{ textAlign: 'center', marginBottom: 32, padding: 20, background: '#001529', borderRadius: 8 }}>
+                  <h2 style={{ color: 'white', fontSize: 24, margin: 0 }}>
+                    {previewModal.data.test_title}
+                  </h2>
+                </div>
+
+                {/* Parts */}
+                {previewModal.data.parts.map((part, partIdx) => (
+                  <div key={partIdx} style={{ marginBottom: 40, border: '3px solid #1890ff', borderRadius: 12, overflow: 'hidden' }}>
+                    {/* Part Header */}
+                    <div style={{ padding: 16, background: '#1890ff', color: 'white' }}>
+                      <h3 style={{ color: 'white', margin: 0, fontSize: 18 }}>
+                        {part.title}
+                      </h3>
+                      {part.subtitle && (
+                        <p style={{ color: 'white', margin: '4px 0 0 0', opacity: 0.9 }}>
+                          {part.subtitle}
+                        </p>
+                      )}
+                    </div>
+
+                    <div style={{ padding: 24, background: 'white' }}>
+                      {/* Context */}
+                      {part.context && (
+                        <div style={{ marginBottom: 20, padding: 16, background: '#e6f7ff', borderRadius: 8, borderLeft: '4px solid #1890ff' }}>
+                          <strong>🎧 Context:</strong> {part.context}
+                        </div>
+                      )}
+
+                      {/* Audio Player */}
+                      {part.audio_url && (
+                        <div style={{ marginBottom: 24, padding: 16, background: '#e6f7ff', borderRadius: 8, border: '2px solid #1890ff' }}>
+                          <h4 style={{ color: '#1890ff', marginBottom: 12 }}>
+                            🎧 Audio File
+                          </h4>
+                          <audio controls style={{ width: '100%' }}>
+                            <source src={`http://localhost:8000${part.audio_url}`} type="audio/mpeg" />
+                            Your browser does not support the audio element.
+                          </audio>
+                          <p style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
+                            📁 File: {part.audio_file || 'listening_audio.mp3'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Audio Script */}
+                      {part.audio_script && (
+                        <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
+                          <h4 style={{ color: '#1890ff', marginBottom: 12 }}>
+                            📝 Audio Script / Transcript {part.audio_url ? '(For Reference)' : ''}
+                          </h4>
+                          <div style={{ 
+                            whiteSpace: 'pre-wrap', 
+                            lineHeight: '1.8', 
+                            fontFamily: 'Georgia, serif',
+                            fontSize: 14,
+                            maxHeight: 400,
+                            overflowY: 'auto',
+                            padding: 12,
+                            background: 'white',
+                            borderRadius: 4
+                          }}>
+                            {part.audio_script}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Question Groups trong Part */}
+                      {part.question_groups && part.question_groups.map((group, groupIdx) => (
+                        <div key={groupIdx} style={{ marginBottom: 24, padding: 16, border: '2px solid #d9d9d9', borderRadius: 8, background: '#fafafa' }}>
+                          {group.section_title && (
+                            <h4 style={{ color: '#262626', marginBottom: 12, fontSize: 16 }}>
+                              {group.section_title}
+                            </h4>
+                          )}
+                          
+                          {group.group_instruction && (
+                            <div style={{ marginBottom: 16, padding: 12, background: '#fff7e6', borderLeft: '4px solid #faad14', borderRadius: 4 }}>
+                              <div style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
+                                {group.group_instruction}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Questions */}
+                          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                            {group.questions.map((q, qIdx) => (
+                              <div key={qIdx} style={{ padding: 12, background: 'white', borderRadius: 6, border: '1px solid #d9d9d9' }}>
+                                <div style={{ marginBottom: 8 }}>
+                                  <strong style={{ fontSize: 14, color: '#1890ff' }}>
+                                    {q.question_number}.
+                                  </strong>
+                                  <span style={{ marginLeft: 8, fontSize: 14 }}>
+                                    {q.content}
+                                  </span>
+                                </div>
+                                
+                                {/* Multiple Choice for Listening */}
+                                {q.question_type === 'multiple_choice' && q.answers && (
+                                  <div style={{ marginTop: 8, marginLeft: 24 }}>
+                                    <Space direction="vertical" size="small">
+                                      {q.answers.map((ans, ansIdx) => (
+                                        <div 
+                                          key={ansIdx}
+                                          style={{
+                                            padding: '8px 12px',
+                                            background: ans.is_correct ? '#f6ffed' : '#fafafa',
+                                            border: ans.is_correct ? '2px solid #52c41a' : '1px solid #d9d9d9',
+                                            borderRadius: 4
+                                          }}
+                                        >
+                                          <span style={{ fontWeight: ans.is_correct ? 600 : 400 }}>
+                                            {String.fromCharCode(65 + ansIdx)}. {ans.answer_content}
+                                          </span>
+                                          {ans.is_correct && <Tag color="success" style={{ marginLeft: 8 }}>✓</Tag>}
+                                        </div>
+                                      ))}
+                                    </Space>
+                                  </div>
+                                )}
+                                
+                                {/* Show correct answer */}
+                                {q.correct_answer && q.question_type !== 'multiple_choice' && (
+                                  <div style={{ marginTop: 8, marginLeft: 24 }}>
+                                    <Tag color="success">
+                                      <strong>Answer:</strong> {q.correct_answer}
+                                    </Tag>
+                                  </div>
+                                )}
+                                
+                                {/* Explanation */}
+                                {q.explanation && (
+                                  <div style={{ marginTop: 8, marginLeft: 24, fontSize: 12, color: '#8c8c8c', fontStyle: 'italic' }}>
+                                    💡 {q.explanation}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </Space>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* READING/WRITING FORMAT: Passage (for Reading) */}
+            {previewModal.data && previewModal.data.passage && !previewModal.data.parts && (
               <div style={{ marginBottom: 32, padding: 20, background: '#f5f5f5', borderRadius: 8, border: '1px solid #d9d9d9' }}>
                 <h3 style={{ color: '#1890ff', fontSize: 18 }}>{previewModal.data.passage.title}</h3>
                 {previewModal.data.passage.introduction && (
@@ -1262,8 +1482,8 @@ const AIExamGenerator = () => {
               </div>
             )}
 
-            {/* Question Groups */}
-            {previewModal.data && previewModal.data.question_groups && previewModal.data.question_groups.map((group, groupIdx) => (
+            {/* Question Groups (for Reading/Writing/Speaking - không có parts) */}
+            {previewModal.data && previewModal.data.question_groups && !previewModal.data.parts && previewModal.data.question_groups.map((group, groupIdx) => (
               <div key={groupIdx} style={{ marginBottom: 32, padding: 20, border: '2px solid #1890ff', borderRadius: 8, background: '#fafafa' }}>
                 <h4 style={{ color: '#1890ff', marginBottom: 16, fontSize: 16 }}>
                   {group.group_name}
