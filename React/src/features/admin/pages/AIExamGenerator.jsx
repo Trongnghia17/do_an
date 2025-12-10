@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Steps, Button, Form, Input, Select, InputNumber, Space, message, Table, Tag, Divider, Modal, Spin, Descriptions } from 'antd';
-import { PlusOutlined, DeleteOutlined, RobotOutlined, SaveOutlined, EyeOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Card, Steps, Button, Form, Input, Select, InputNumber, Space, message, Table, Tag, Divider, Modal, Spin, Descriptions, Upload, Image } from 'antd';
+import { PlusOutlined, DeleteOutlined, RobotOutlined, SaveOutlined, EyeOutlined, CheckCircleOutlined, UploadOutlined, PictureOutlined } from '@ant-design/icons';
 import { useAIGeneration } from '@/hooks/useAIGeneration';
 import { examsAPI, examAPI } from '@/lib/fastapi-client';
 import './AIExamGenerator.css';
@@ -31,6 +31,8 @@ const AIExamGenerator = () => {
   const [examTests, setExamTests] = useState([]);
   const [loadingExams, setLoadingExams] = useState(false);
   const [loadingTests, setLoadingTests] = useState(false);
+  const [writingTask1Image, setWritingTask1Image] = useState(null); // Ảnh cho Writing Task 1
+  const [uploadModal, setUploadModal] = useState({ visible: false, sectionId: null }); // Modal upload ảnh
 
   const { generateQuestions, generateExam, loading } = useAIGeneration();
 
@@ -124,6 +126,93 @@ const AIExamGenerator = () => {
 
   // Step 2: Thêm sections (các phần trong skill)
   const handleAddSection = (values) => {
+    // Xử lý đặc biệt cho Writing: tự động tạo 2 sections (Task 1 và Task 2)
+    if (examConfig.skillType === 'writing') {
+      if (sections.length > 0) {
+        message.warning('Writing skill đã có đầy đủ 2 tasks. Vui lòng xóa để tạo lại.');
+        return;
+      }
+
+      // Tạo Task 1 - Chart/Graph Description
+      const task1 = {
+        id: Date.now(),
+        name: 'WRITING TASK 1',
+        topic: values.topic,
+        difficulty: values.difficulty,
+        num_questions: 1,  // 1 task
+        question_types: ['essay'],
+        content: '',
+        isTask1: true  // Đánh dấu để AI biết tạo Task 1
+      };
+
+      // Tạo Task 2 - Essay
+      const task2 = {
+        id: Date.now() + 1,
+        name: 'WRITING TASK 2',
+        topic: values.topic,
+        difficulty: values.difficulty,
+        num_questions: 1,  // 1 task
+        question_types: ['essay'],
+        content: '',
+        isTask2: true  // Đánh dấu để AI biết tạo Task 2
+      };
+
+      setSections([task1, task2]);
+      form.resetFields(['sectionName', 'topic', 'difficulty']);
+      message.success('Đã tạo WRITING TASK 1 (mô tả biểu đồ) và WRITING TASK 2 (essay)');
+      return;
+    }
+
+    // Xử lý đặc biệt cho Speaking: tự động tạo 3 sections (Part 1, 2, 3)
+    if (examConfig.skillType === 'speaking') {
+      if (sections.length > 0) {
+        message.warning('Speaking skill đã có đầy đủ 3 parts. Vui lòng xóa để tạo lại.');
+        return;
+      }
+
+      // Tạo Part 1 - Introduction and Interview
+      const part1 = {
+        id: Date.now(),
+        name: 'PART 1',
+        topic: values.topic,
+        difficulty: values.difficulty,
+        num_questions: 4,  // 4-5 câu hỏi
+        question_types: ['spoken_question'],
+        content: '',
+        isPart1: true
+      };
+
+      // Tạo Part 2 - Long Turn (Cue Card)
+      const part2 = {
+        id: Date.now() + 1,
+        name: 'PART 2',
+        topic: values.topic,
+        difficulty: values.difficulty,
+        num_questions: 1,  // 1 cue card
+        question_types: ['cue_card'],
+        content: '',
+        isPart2: true
+      };
+
+      // Tạo Part 3 - Discussion
+      const part3 = {
+        id: Date.now() + 2,
+        name: 'PART 3',
+        topic: values.topic,
+        difficulty: values.difficulty,
+        num_questions: 5,  // 4-6 câu hỏi
+        question_types: ['spoken_question'],
+        content: '',
+        isPart3: true
+      };
+
+      setSections([part1, part2, part3]);
+      form.resetFields(['sectionName', 'topic', 'difficulty']);
+      message.success('Đã tạo SPEAKING PART 1 (interview), PART 2 (cue card), và PART 3 (discussion)');
+      return;
+    }
+
+    // Các skill khác (Reading, Listening) giữ nguyên
     const newSection = {
       id: Date.now(),
       name: values.sectionName || `Section ${sections.length + 1}`,
@@ -139,14 +228,168 @@ const AIExamGenerator = () => {
   };
 
   const handleRemoveSection = (sectionId) => {
+    const section = sections.find(s => s.id === sectionId);
+    
+    // Nếu xóa Writing Task 1, xóa luôn ảnh
+    if (section && section.isTask1 && examConfig.skillType === 'writing') {
+      setWritingTask1Image(null);
+    }
+    
     setSections(sections.filter(s => s.id !== sectionId));
     const newGeneratedQuestions = { ...generatedQuestions };
     delete newGeneratedQuestions[sectionId];
     setGeneratedQuestions(newGeneratedQuestions);
   };
 
+  // Generate Writing tasks - đặc biệt cho Writing (tạo cả 2 tasks cùng lúc)
+  const handleGenerateWritingTasks = async () => {
+    if (sections.length !== 2 || !sections[0].isTask1 || !sections[1].isTask2) {
+      message.error('Writing test phải có đúng 2 tasks (Task 1 và Task 2)');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const selectedExam = exams.find(e => e.id === examConfig.examId);
+      const topic = sections[0].topic; // Topic giống nhau cho cả 2 tasks
+      const difficulty = sections[0].difficulty;
+
+      console.log('Generating Writing tasks with config:', {
+        examType: selectedExam?.type || 'IELTS',
+        skill: 'Writing',
+        topic: topic,
+        difficulty: difficulty
+      });
+      
+      // Gọi AI để tạo cả 2 tasks cùng lúc
+      const result = await generateQuestions({
+        examType: selectedExam?.type || 'IELTS',
+        skill: 'Writing',
+        topic: topic,
+        difficulty: difficulty,
+        numQuestions: 2,  // Sẽ tạo 2 tasks
+        questionTypes: ['essay']
+      });
+
+      console.log('Generated Writing result:', result);
+
+      // AI trả về question_groups với 2 groups: WRITING TASK 1 và WRITING TASK 2
+      if (result.data && result.data.question_groups && result.data.question_groups.length === 2) {
+        const task1Data = result.data.question_groups[0];
+        const task2Data = result.data.question_groups[1];
+
+        // Lưu từng task vào section tương ứng
+        const newGeneratedQuestions = { ...generatedQuestions };
+        
+        // Task 1
+        newGeneratedQuestions[sections[0].id] = {
+          question_groups: [task1Data]
+        };
+        
+        // Task 2
+        newGeneratedQuestions[sections[1].id] = {
+          question_groups: [task2Data]
+        };
+
+        setGeneratedQuestions(newGeneratedQuestions);
+        message.success('✅ Đã tạo thành công WRITING TASK 1 và WRITING TASK 2!');
+      } else {
+        throw new Error('Invalid response format for Writing tasks');
+      }
+    } catch (error) {
+      console.error('Error generating Writing tasks:', error);
+      const errorMsg = error.response?.data?.detail || error.message || 'Unknown error';
+      message.error('Lỗi khi tạo Writing tasks: ' + errorMsg);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Generate Speaking test - đặc biệt cho Speaking (tạo cả 3 parts cùng lúc)
+  const handleGenerateSpeakingTest = async () => {
+    if (sections.length !== 3 || !sections[0].isPart1 || !sections[1].isPart2 || !sections[2].isPart3) {
+      message.error('Speaking test phải có đúng 3 parts (Part 1, Part 2, Part 3)');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const selectedExam = exams.find(e => e.id === examConfig.examId);
+      const topic = sections[0].topic; // Topic giống nhau cho cả 3 parts
+      const difficulty = sections[0].difficulty;
+
+      console.log('Generating Speaking test with config:', {
+        examType: selectedExam?.type || 'IELTS',
+        skill: 'Speaking',
+        topic: topic,
+        difficulty: difficulty
+      });
+      
+      // Gọi AI để tạo cả 3 parts cùng lúc
+      const result = await generateQuestions({
+        examType: selectedExam?.type || 'IELTS',
+        skill: 'Speaking',
+        topic: topic,
+        difficulty: difficulty,
+        numQuestions: 3,  // Sẽ tạo 3 parts
+        questionTypes: ['speaking']
+      });
+
+      console.log('Generated Speaking result:', result);
+
+      // AI trả về questions (array) hoặc question_groups (array)
+      const generatedData = result.data.questions || result.data.question_groups;
+      
+      if (generatedData && generatedData.length === 3) {
+        const part1Data = generatedData[0];
+        const part2Data = generatedData[1];
+        const part3Data = generatedData[2];
+
+        // Lưu từng part vào section tương ứng
+        const newGeneratedQuestions = { ...generatedQuestions };
+        
+        // Part 1
+        newGeneratedQuestions[sections[0].id] = {
+          question_groups: [part1Data]
+        };
+        
+        // Part 2
+        newGeneratedQuestions[sections[1].id] = {
+          question_groups: [part2Data]
+        };
+        
+        // Part 3
+        newGeneratedQuestions[sections[2].id] = {
+          question_groups: [part3Data]
+        };
+
+        setGeneratedQuestions(newGeneratedQuestions);
+        message.success('✅ Đã tạo thành công PART 1, PART 2, và PART 3!');
+      } else {
+        console.error('Invalid response format:', result.data);
+        throw new Error(`Invalid response format for Speaking test. Expected 3 groups, got ${generatedData?.length || 0}`);
+      }
+    } catch (error) {
+      console.error('Error generating Speaking test:', error);
+      const errorMsg = error.response?.data?.detail || error.message || 'Unknown error';
+      message.error('Lỗi khi tạo Speaking test: ' + errorMsg);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // Step 3: Generate questions cho từng section
   const handleGenerateQuestionsForSection = async (section) => {
+    // Nếu là Writing hoặc Speaking, không cho generate từng task/part riêng lẻ
+    if (examConfig.skillType === 'writing') {
+      message.warning('Với Writing, vui lòng dùng nút "Generate Writing Test" để tạo cả 2 tasks cùng lúc');
+      return;
+    }
+    if (examConfig.skillType === 'speaking') {
+      message.warning('Với Speaking, vui lòng dùng nút "Generate Speaking Test" để tạo cả 3 parts cùng lúc');
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const selectedExam = exams.find(e => e.id === examConfig.examId);
@@ -312,7 +555,8 @@ const AIExamGenerator = () => {
         // New format: only question_groups (no passage)
         if (generatedData && generatedData.question_groups) {
           console.log('⚠️ Using question_groups only format (NO PASSAGE!)');
-          return {
+          
+          const sectionData = {
             name: section.name,
             topic: section.topic,
             difficulty: section.difficulty,
@@ -321,6 +565,17 @@ const AIExamGenerator = () => {
             content: section.content || '',
             question_groups: generatedData.question_groups
           };
+
+          // Nếu là Writing Task 1 và có ảnh, thêm thông tin ảnh vào
+          if (section.isTask1 && examConfig.skillType === 'writing' && writingTask1Image) {
+            console.log('✅ Adding image to Writing Task 1');
+            sectionData.image_data = {
+              name: writingTask1Image.name,
+              data: writingTask1Image.url // base64
+            };
+          }
+
+          return sectionData;
         }
         
         // Old format: just questions (flat array)
@@ -375,6 +630,7 @@ const AIExamGenerator = () => {
           setCurrentStep(0);
           setSections([]);
           setGeneratedQuestions({});
+          setWritingTask1Image(null); // Reset ảnh Writing Task 1
           form.resetFields();
         }
       });
@@ -435,13 +691,26 @@ const AIExamGenerator = () => {
               Generate
             </Button>
           ) : (
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handlePreviewQuestions(record.id)}
-            >
-              Preview
-            </Button>
+            <>
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => handlePreviewQuestions(record.id)}
+              >
+                Preview
+              </Button>
+              {/* Nút upload ảnh cho Writing Task 1 */}
+              {record.isTask1 && examConfig.skillType === 'writing' && (
+                <Button
+                  size="small"
+                  icon={<PictureOutlined />}
+                  onClick={() => setUploadModal({ visible: true, sectionId: record.id })}
+                  type={writingTask1Image ? 'default' : 'dashed'}
+                >
+                  {writingTask1Image ? 'Đổi ảnh' : 'Thêm ảnh'}
+                </Button>
+              )}
+            </>
           )}
           <Button
             danger
@@ -517,11 +786,18 @@ const AIExamGenerator = () => {
               <Select onChange={(value) => {
                 const names = { reading: 'Reading', writing: 'Writing', listening: 'Listening', speaking: 'Speaking' };
                 form.setFieldValue('skillName', names[value]);
+                
+                // Tự động set thời gian
+                if (value === 'writing') {
+                  form.setFieldValue('timeLimit', 60); // Writing: 60 phút (Task 1: 20 + Task 2: 40)
+                } else if (value === 'speaking') {
+                  form.setFieldValue('timeLimit', 15); // Speaking: 11-14 phút (Part 1: 4-5, Part 2: 3-4, Part 3: 4-5)
+                }
               }}>
                 <Option value="reading">Reading</Option>
-                <Option value="writing">Writing</Option>
+                <Option value="writing">Writing (Task 1 + Task 2)</Option>
                 <Option value="listening">Listening</Option>
-                <Option value="speaking">Speaking</Option>
+                <Option value="speaking">Speaking (Part 1 + 2 + 3)</Option>
               </Select>
             </Form.Item>
 
@@ -537,6 +813,13 @@ const AIExamGenerator = () => {
               label="Thời gian làm bài (phút)"
               name="timeLimit"
               rules={[{ required: true }]}
+              tooltip={
+                examConfig.skillType === 'writing' 
+                  ? 'Writing luôn là 60 phút (Task 1: 20 phút + Task 2: 40 phút)' 
+                  : examConfig.skillType === 'speaking'
+                  ? 'Speaking luôn là 11-14 phút (Part 1: 4-5, Part 2: 3-4, Part 3: 4-5)'
+                  : null
+              }
             >
               <InputNumber min={1} max={180} style={{ width: '100%' }} />
             </Form.Item>
@@ -554,82 +837,207 @@ const AIExamGenerator = () => {
       title: 'Thêm Sections',
       content: (
         <div>
-          <Card title="Thêm Section mới" style={{ marginBottom: 16 }}>
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={handleAddSection}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {examConfig.skillType === 'writing' ? (
+            // Writing đặc biệt: chỉ cần 1 section duy nhất, AI sẽ tự tạo 2 tasks
+            <Card title="Cấu hình IELTS Writing Test" style={{ marginBottom: 16 }}>
+              <div style={{ background: '#f0f2f5', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                <p style={{ margin: 0, color: '#666' }}>
+                  <strong>Lưu ý:</strong> IELTS Writing gồm 2 tasks cố định:
+                </p>
+                <ul style={{ marginTop: 8, marginBottom: 0 }}>
+                  <li>Task 1: Mô tả biểu đồ/bảng/quy trình (150 từ, 20 phút)</li>
+                  <li>Task 2: Viết bài luận về chủ đề cho trước (250 từ, 40 phút)</li>
+                </ul>
+              </div>
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleAddSection}
+                initialValues={{
+                  sectionName: 'Writing Test',
+                  difficulty: 'medium',
+                  num_questions: 2  // Fixed: 2 tasks
+                }}
+              >
                 <Form.Item
                   label="Tên Section"
                   name="sectionName"
-                  rules={[{ required: true, message: 'Vui lòng nhập tên section' }]}
+                  rules={[{ required: true }]}
                 >
-                  <Input placeholder="e.g., Section 1, Part A" />
+                  <Input placeholder="e.g., Writing Test, IELTS Writing" />
                 </Form.Item>
 
                 <Form.Item
-                  label="Topic"
+                  label="Chủ đề (Topic)"
                   name="topic"
-                  rules={[{ required: true, message: 'Vui lòng nhập topic' }]}
+                  rules={[{ required: true, message: 'Vui lòng nhập chủ đề cho Task 2' }]}
+                  tooltip="Chủ đề này sẽ được sử dụng cho Task 2 (Essay)"
                 >
-                  <Input placeholder="e.g., Environment, Technology" />
+                  <Input placeholder="e.g., Environment, Technology, Education, Health" />
                 </Form.Item>
 
                 <Form.Item
-                  label="Difficulty"
+                  label="Độ khó (Difficulty)"
                   name="difficulty"
                   rules={[{ required: true }]}
                 >
                   <Select>
-                    <Option value="easy">Easy</Option>
-                    <Option value="medium">Medium</Option>
-                    <Option value="hard">Hard</Option>
+                    <Option value="easy">Easy (Band 5.0-6.0)</Option>
+                    <Option value="medium">Medium (Band 6.5-7.5)</Option>
+                    <Option value="hard">Hard (Band 8.0-9.0)</Option>
                   </Select>
                 </Form.Item>
 
+                {/* Hidden field - Writing luôn có 2 tasks */}
+                <Form.Item name="num_questions" hidden>
+                  <InputNumber />
+                </Form.Item>
+
+                <Form.Item>
+                  <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block size="large">
+                    Thêm Writing Test
+                  </Button>
+                </Form.Item>
+              </Form>
+            </Card>
+          ) : examConfig.skillType === 'speaking' ? (
+            // Speaking đặc biệt: 3 parts cố định
+            <Card title="Cấu hình IELTS Speaking Test" style={{ marginBottom: 16 }}>
+              <div style={{ background: '#fff7e6', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #ffd591' }}>
+                <p style={{ margin: 0, color: '#ad6800' }}>
+                  <strong>Lưu ý:</strong> IELTS Speaking gồm 3 parts cố định:
+                </p>
+                <ul style={{ marginTop: 8, marginBottom: 0 }}>
+                  <li>Part 1: Introduction and Interview (4-5 phút) - Câu hỏi cá nhân</li>
+                  <li>Part 2: Long Turn với Cue Card (3-4 phút) - Nói về 1 chủ đề</li>
+                  <li>Part 3: Discussion (4-5 phút) - Thảo luận sâu hơn</li>
+                </ul>
+              </div>
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleAddSection}
+                initialValues={{
+                  sectionName: 'Speaking Test',
+                  difficulty: 'medium'
+                }}
+              >
                 <Form.Item
-                  label="Số lượng câu hỏi"
-                  name="num_questions"
+                  label="Tên Section"
+                  name="sectionName"
                   rules={[{ required: true }]}
                 >
-                  <InputNumber min={1} max={50} style={{ width: '100%' }} />
+                  <Input placeholder="e.g., Speaking Test, IELTS Speaking" />
                 </Form.Item>
 
                 <Form.Item
-                  label="Loại câu hỏi"
-                  name="question_types"
-                  extra={`Các loại câu hỏi cho ${examConfig.skillName || 'Reading'}`}
+                  label="Chủ đề (Topic)"
+                  name="topic"
+                  rules={[{ required: true, message: 'Vui lòng nhập chủ đề' }]}
+                  tooltip="Chủ đề này sẽ được dùng cho cả 3 parts"
                 >
-                  <Select 
-                    mode="multiple" 
-                    placeholder="Chọn loại câu hỏi (để trống = tất cả)"
-                    allowClear
-                  >
-                    {(questionTypesBySkill[examConfig.skillType] || questionTypesBySkill.reading).map(type => (
-                      <Option key={type.value} value={type.value}>
-                        {type.label}
-                      </Option>
-                    ))}
+                  <Input placeholder="e.g., Theatre, Travel, Technology, Education" />
+                </Form.Item>
+
+                <Form.Item
+                  label="Độ khó (Difficulty)"
+                  name="difficulty"
+                  rules={[{ required: true }]}
+                >
+                  <Select>
+                    <Option value="easy">Easy (Band 5.0-6.0)</Option>
+                    <Option value="medium">Medium (Band 6.5-7.5)</Option>
+                    <Option value="hard">Hard (Band 8.0-9.0)</Option>
                   </Select>
                 </Form.Item>
-              </div>
 
-              <Form.Item
-                label="Nội dung (Passage/Dialogue)"
-                name="content"
+                <Form.Item>
+                  <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block size="large">
+                    Thêm Speaking Test
+                  </Button>
+                </Form.Item>
+              </Form>
+            </Card>
+          ) : (
+            // Các skill khác (Reading, Listening, Speaking) giữ nguyên
+            <Card title="Thêm Section mới" style={{ marginBottom: 16 }}>
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleAddSection}
               >
-                <TextArea rows={4} placeholder="Nhập passage hoặc dialogue nếu có..." />
-              </Form.Item>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <Form.Item
+                    label="Tên Section"
+                    name="sectionName"
+                    rules={[{ required: true, message: 'Vui lòng nhập tên section' }]}
+                  >
+                    <Input placeholder="e.g., Section 1, Part A" />
+                  </Form.Item>
 
-              <Form.Item>
-                <Button type="dashed" htmlType="submit" icon={<PlusOutlined />} block>
-                  Thêm Section
-                </Button>
-              </Form.Item>
-            </Form>
-          </Card>
+                  <Form.Item
+                    label="Topic"
+                    name="topic"
+                    rules={[{ required: true, message: 'Vui lòng nhập topic' }]}
+                  >
+                    <Input placeholder="e.g., Environment, Technology" />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Difficulty"
+                    name="difficulty"
+                    rules={[{ required: true }]}
+                  >
+                    <Select>
+                      <Option value="easy">Easy</Option>
+                      <Option value="medium">Medium</Option>
+                      <Option value="hard">Hard</Option>
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Số lượng câu hỏi"
+                    name="num_questions"
+                    rules={[{ required: true }]}
+                  >
+                    <InputNumber min={1} max={50} style={{ width: '100%' }} />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Loại câu hỏi"
+                    name="question_types"
+                    extra={`Các loại câu hỏi cho ${examConfig.skillName || 'Reading'}`}
+                  >
+                    <Select 
+                      mode="multiple" 
+                      placeholder="Chọn loại câu hỏi (để trống = tất cả)"
+                      allowClear
+                    >
+                      {(questionTypesBySkill[examConfig.skillType] || questionTypesBySkill.reading).map(type => (
+                        <Option key={type.value} value={type.value}>
+                          {type.label}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </div>
+
+                <Form.Item
+                  label="Nội dung (Passage/Dialogue)"
+                  name="content"
+                >
+                  <TextArea rows={4} placeholder="Nhập passage hoặc dialogue nếu có..." />
+                </Form.Item>
+
+                <Form.Item>
+                  <Button type="dashed" htmlType="submit" icon={<PlusOutlined />} block>
+                    Thêm Section
+                  </Button>
+                </Form.Item>
+              </Form>
+            </Card>
+          )}
+          
 
           {sections.length > 0 && (
             <Card title={`Danh sách Sections (${sections.length})`}>
@@ -657,9 +1065,51 @@ const AIExamGenerator = () => {
       title: 'Tạo câu hỏi',
       content: (
         <Card title="Tạo câu hỏi với AI">
-          <p style={{ marginBottom: 16 }}>
-            Nhấn "Generate" để tạo câu hỏi tự động cho từng section bằng AI.
-          </p>
+          {examConfig.skillType === 'writing' ? (
+            <>
+              <div style={{ background: '#fff7e6', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #ffd591' }}>
+                <p style={{ margin: 0, color: '#ad6800' }}>
+                  <strong>⚠️ Lưu ý:</strong> Writing Test sẽ được tạo cả 2 tasks cùng lúc (Task 1 + Task 2)
+                </p>
+              </div>
+              <Button
+                type="primary"
+                size="large"
+                icon={<RobotOutlined />}
+                onClick={handleGenerateWritingTasks}
+                loading={isGenerating}
+                block
+                style={{ marginBottom: 24 }}
+                disabled={sections.some(s => generatedQuestions[s.id])}
+              >
+                {isGenerating ? 'Đang tạo Writing Test...' : '🤖 Generate Writing Test (Task 1 + Task 2)'}
+              </Button>
+            </>
+          ) : examConfig.skillType === 'speaking' ? (
+            <>
+              <div style={{ background: '#e6f7ff', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #91d5ff' }}>
+                <p style={{ margin: 0, color: '#0050b3' }}>
+                  <strong>⚠️ Lưu ý:</strong> Speaking Test sẽ được tạo cả 3 parts cùng lúc (Part 1 + Part 2 + Part 3)
+                </p>
+              </div>
+              <Button
+                type="primary"
+                size="large"
+                icon={<RobotOutlined />}
+                onClick={handleGenerateSpeakingTest}
+                loading={isGenerating}
+                block
+                style={{ marginBottom: 24 }}
+                disabled={sections.some(s => generatedQuestions[s.id])}
+              >
+                {isGenerating ? 'Đang tạo Speaking Test...' : '🤖 Generate Speaking Test (Part 1 + Part 2 + Part 3)'}
+              </Button>
+            </>
+          ) : (
+            <p style={{ marginBottom: 16 }}>
+              Nhấn "Generate" để tạo câu hỏi tự động cho từng section bằng AI.
+            </p>
+          )}
           <Table
             dataSource={sections}
             columns={sectionColumns}
@@ -797,6 +1247,21 @@ const AIExamGenerator = () => {
               </div>
             )}
 
+            {/* Hiển thị ảnh cho Writing Task 1 */}
+            {previewModal.section && previewModal.section.isTask1 && writingTask1Image && (
+              <div style={{ marginBottom: 24, padding: 20, background: '#f0f5ff', borderRadius: 8, border: '2px solid #1890ff' }}>
+                <h4 style={{ color: '#1890ff', marginBottom: 12 }}>📊 Chart/Graph/Diagram</h4>
+                <Image 
+                  src={writingTask1Image.url} 
+                  alt="Writing Task 1 Chart" 
+                  style={{ maxWidth: '100%', borderRadius: 8 }}
+                  preview={{
+                    mask: 'Click to view full size'
+                  }}
+                />
+              </div>
+            )}
+
             {/* Question Groups */}
             {previewModal.data && previewModal.data.question_groups && previewModal.data.question_groups.map((group, groupIdx) => (
               <div key={groupIdx} style={{ marginBottom: 32, padding: 20, border: '2px solid #1890ff', borderRadius: 8, background: '#fafafa' }}>
@@ -913,6 +1378,54 @@ const AIExamGenerator = () => {
                         )}
                       </div>
                     )}
+
+                    {/* Essay/Writing - Hiển thị yêu cầu và hướng dẫn */}
+                    {q.question_type === 'essay' && (
+                      <div style={{ marginTop: 12 }}>
+                        {/* Hiển thị bảng dữ liệu cho Task 1 */}
+                        {q.chart_data && (
+                          <div style={{ marginBottom: 16, padding: '16px', background: '#f0f5ff', borderRadius: 8, border: '2px solid #1890ff' }}>
+                            <h5 style={{ color: '#1890ff', marginBottom: 12 }}>📊 Data Tables</h5>
+                            <div style={{ 
+                              padding: '12px', 
+                              background: 'white', 
+                              borderRadius: 4,
+                              fontFamily: 'Monaco, Consolas, monospace',
+                              fontSize: '13px',
+                              whiteSpace: 'pre-wrap',
+                              lineHeight: '1.8',
+                              overflowX: 'auto'
+                            }}>
+                              {q.chart_data}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Thông tin task */}
+                        <div style={{ padding: '12px 16px', background: '#fff7e6', borderRadius: 6, border: '1px solid #ffd591', marginBottom: 12 }}>
+                          <Space direction="vertical" style={{ width: '100%' }} size="small">
+                            {q.time_minutes && (
+                              <div><strong>⏱️ Thời gian:</strong> {q.time_minutes} phút</div>
+                            )}
+                            {q.word_count && (
+                              <div><strong>📝 Số từ yêu cầu:</strong> Ít nhất {q.word_count} từ</div>
+                            )}
+                          </Space>
+                        </div>
+
+                        {/* Hướng dẫn */}
+                        {q.explanation && (
+                          <div>
+                            <div style={{ marginBottom: 6, color: '#8c8c8c', fontSize: 13 }}>
+                              <strong>💡 Hướng dẫn & tiêu chí chấm:</strong>
+                            </div>
+                            <div style={{ padding: '10px 14px', background: '#e6f7ff', borderRadius: 6, border: '1px solid #91d5ff', whiteSpace: 'pre-wrap' }}>
+                              {q.explanation}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>
@@ -938,6 +1451,94 @@ const AIExamGenerator = () => {
               </div>
             )}
           </div>
+        </Modal>
+
+        {/* Modal Upload ảnh cho Writing Task 1 */}
+        <Modal
+          title="Upload ảnh biểu đồ cho Writing Task 1"
+          visible={uploadModal.visible}
+          onCancel={() => setUploadModal({ visible: false, sectionId: null })}
+          footer={[
+            <Button key="cancel" onClick={() => setUploadModal({ visible: false, sectionId: null })}>
+              Hủy
+            </Button>,
+            <Button 
+              key="save" 
+              type="primary" 
+              onClick={() => {
+                if (writingTask1Image) {
+                  message.success('Đã lưu ảnh cho Writing Task 1');
+                  setUploadModal({ visible: false, sectionId: null });
+                } else {
+                  message.warning('Vui lòng chọn ảnh trước');
+                }
+              }}
+            >
+              Lưu
+            </Button>
+          ]}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ color: '#666' }}>
+              Upload ảnh biểu đồ/bảng/quy trình cho WRITING TASK 1. Ảnh này sẽ được hiển thị trong đề thi.
+            </p>
+          </div>
+          
+          <Upload
+            listType="picture-card"
+            maxCount={1}
+            beforeUpload={(file) => {
+              // Kiểm tra file type
+              const isImage = file.type.startsWith('image/');
+              if (!isImage) {
+                message.error('Chỉ chấp nhận file ảnh!');
+                return Upload.LIST_IGNORE;
+              }
+              
+              // Kiểm tra size (max 5MB)
+              const isLt5M = file.size / 1024 / 1024 < 5;
+              if (!isLt5M) {
+                message.error('Ảnh phải nhỏ hơn 5MB!');
+                return Upload.LIST_IGNORE;
+              }
+
+              // Convert to base64 for preview
+              const reader = new FileReader();
+              reader.readAsDataURL(file);
+              reader.onload = () => {
+                setWritingTask1Image({
+                  file: file,
+                  url: reader.result,
+                  name: file.name
+                });
+              };
+              
+              return false; // Prevent auto upload
+            }}
+            onRemove={() => {
+              setWritingTask1Image(null);
+            }}
+            fileList={writingTask1Image ? [{
+              uid: '-1',
+              name: writingTask1Image.name,
+              status: 'done',
+              url: writingTask1Image.url
+            }] : []}
+          >
+            {!writingTask1Image && (
+              <div>
+                <UploadOutlined style={{ fontSize: 32, color: '#1890ff' }} />
+                <div style={{ marginTop: 8 }}>Upload ảnh</div>
+              </div>
+            )}
+          </Upload>
+
+          {writingTask1Image && (
+            <div style={{ marginTop: 16 }}>
+              <p><strong>Xem trước:</strong></p>
+              <Image src={writingTask1Image.url} alt="Chart preview" style={{ maxWidth: '100%' }} />
+            </div>
+          )}
         </Modal>
       </div>
   );

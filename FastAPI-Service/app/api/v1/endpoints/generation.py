@@ -178,6 +178,30 @@ async def generate_complete_exam(
                         elif q.get("options"):
                             options_json = json.dumps(q.get("options"))
                         
+                        # Xử lý metadata cho Writing Task 1 (chart_data, time_minutes, word_count)
+                        metadata_fields = {}
+                        if q.get("chart_data"):
+                            metadata_fields["chart_data"] = q.get("chart_data")
+                        if q.get("time_minutes"):
+                            metadata_fields["time_minutes"] = q.get("time_minutes")
+                        if q.get("word_count"):
+                            metadata_fields["word_count"] = q.get("word_count")
+                        
+                        # Nếu có metadata, lưu vào options (dùng options để lưu vì Text field rộng)
+                        # Nếu đã có options (multiple choice), merge vào
+                        if metadata_fields:
+                            if options_json:
+                                # Đã có options (multiple choice), thêm metadata
+                                existing_data = json.loads(options_json) if options_json else []
+                                combined = {
+                                    "options": existing_data,
+                                    "metadata": metadata_fields
+                                }
+                                options_json = json.dumps(combined, ensure_ascii=False)
+                            else:
+                                # Không có options, lưu metadata trực tiếp
+                                options_json = json.dumps({"metadata": metadata_fields}, ensure_ascii=False)
+                        
                         question = ExamQuestion(
                             question_group_id=group.id,
                             question_text=q.get("content", q.get("question_text", "")),

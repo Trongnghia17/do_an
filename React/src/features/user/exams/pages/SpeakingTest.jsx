@@ -43,7 +43,26 @@ const SpeakingTest = () => {
           const allQuestionGroups = [];
 
           data.sections.forEach((section, index) => {
-            if (section.questions && section.questions.length > 0) {
+            // Check for question_groups first (new format)
+            if (section.question_groups && section.question_groups.length > 0) {
+              section.question_groups.forEach(group => {
+                if (group.questions && group.questions.length > 0) {
+                  allQuestionGroups.push({
+                    id: `group-${group.id}`,
+                    part: index + 1,
+                    section_id: section.id,
+                    group_name: group.name,
+                    title: section.title,
+                    content: group.content || section.content,
+                    instruction: group.content, // Group instruction
+                    question_type: group.question_type,
+                    questions: group.questions
+                  });
+                }
+              });
+            }
+            // Fallback to direct questions (old format)
+            else if (section.questions && section.questions.length > 0) {
               allQuestionGroups.push({
                 id: `section-${section.id}`,
                 part: index + 1,
@@ -177,11 +196,12 @@ const SpeakingTest = () => {
           </div>
 
           {/* Group Content - Instruction */}
-          {currentPartGroups.length > 0 && currentPartGroups[0].content && (
-            <div
-              className="speaking-test__instruction"
-              dangerouslySetInnerHTML={{ __html: currentPartGroups[0].content }}
-            />
+          {currentPartGroups.length > 0 && (currentPartGroups[0].instruction || currentPartGroups[0].content) && (
+            <div className="speaking-test__instruction">
+              <p className="speaking-test__instruction-text">
+                {currentPartGroups[0].instruction || currentPartGroups[0].content}
+              </p>
+            </div>
           )}
 
           {/* Questions */}
@@ -200,10 +220,14 @@ const SpeakingTest = () => {
                         Question {qIndex + 1}
                       </strong>
                       {question.content && (
-                        <span
-                          className="speaking-test__question-text"
-                          dangerouslySetInnerHTML={{ __html: question.content }}
-                        />
+                        <div className="speaking-test__question-text">
+                          {question.content.split('\n').map((line, i) => (
+                            <span key={i}>
+                              {line}
+                              {i < question.content.split('\n').length - 1 && <br />}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
 

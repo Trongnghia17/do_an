@@ -319,6 +319,28 @@
   margin: 8px 0;
 }
 
+/* Chart Data / Data Tables cho Task 1 */
+.writing-test__chart-data {
+  margin: 20px 0;
+  padding: 20px;
+  background: #F0F5FF;
+  border: 2px solid #1890ff;
+  border-radius: 8px;
+}
+
+.writing-test__data-table {
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  margin: 0;
+  padding: 16px;
+  background: white;
+  border-radius: 4px;
+  color: #1F2937;
+}
+
 /* Table trong question content */
 .writing-test__question-content table {
   width: 100%;

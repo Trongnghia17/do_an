@@ -60,12 +60,23 @@ const WritingTest = () => {
         else if (data?.sections && data.sections.length > 0) {
           // Với Writing, mỗi section là một task
           data.sections.forEach((section, index) => {
+            // Lấy questions từ question_groups
+            let sectionQuestions = [];
+            if (section.question_groups && section.question_groups.length > 0) {
+              // Lấy tất cả questions từ tất cả question_groups trong section
+              section.question_groups.forEach(qg => {
+                if (qg.questions && qg.questions.length > 0) {
+                  sectionQuestions = [...sectionQuestions, ...qg.questions];
+                }
+              });
+            }
+            
             allGroups.push({
               id: section.id,
               part: index + 1,
-              content: section.content,
+              content: section.question_groups?.[0]?.content || section.content || '', // Lấy instruction từ question_group
               instructions: '', // Không set instructions để content hiển thị
-              questions: section.questions || [], // Writing có questions riêng lẻ
+              questions: sectionQuestions,
               title: section.title || `Task ${index + 1}`
             });
           });
@@ -191,6 +202,16 @@ const WritingTest = () => {
                 <div className="writing-test__questions">
                   {group.questions.map((question, qIndex) => (
                     <div key={question.id} className="writing-test__question">
+                      {/* Hiển thị bảng dữ liệu nếu có (Task 1) */}
+                      {question.metadata?.chart_data && (
+                        <div className="writing-test__chart-data">
+                          <pre className="writing-test__data-table">
+                            {question.metadata.chart_data}
+                          </pre>
+                        </div>
+                      )}
+                      
+                      {/* Nội dung câu hỏi */}
                       {question.content && (
                         <div 
                           className="writing-test__question-content"

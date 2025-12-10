@@ -183,20 +183,54 @@ async def get_skill(
                 
                 questions_data = []
                 for question in group.questions:
-                    questions_data.append({
+                    # Parse options/metadata from JSON
+                    import json
+                    parsed_metadata = None
+                    parsed_options = None
+                    
+                    if question.options:
+                        try:
+                            options_data = json.loads(question.options)
+                            # Check if it's the new format with metadata
+                            if isinstance(options_data, dict):
+                                if "metadata" in options_data:
+                                    parsed_metadata = options_data["metadata"]
+                                    if "options" in options_data:
+                                        parsed_options = options_data["options"]
+                                elif "chart_data" in options_data or "time_minutes" in options_data:
+                                    # Direct metadata format
+                                    parsed_metadata = options_data
+                                else:
+                                    # Old format - just options array
+                                    parsed_options = options_data
+                            elif isinstance(options_data, list):
+                                # Old format - array of options
+                                parsed_options = options_data
+                        except json.JSONDecodeError:
+                            # If not JSON, treat as plain text
+                            pass
+                    
+                    question_dict = {
                         "id": question.id,
                         "content": question.question_text,
                         "answer_content": question.correct_answer,
-                        "metadata": question.options
-                    })
+                        "metadata": parsed_metadata
+                    }
+                    
+                    # Add options separately if they exist
+                    if parsed_options:
+                        question_dict["options"] = parsed_options
+                    
+                    questions_data.append(question_dict)
                 
-            question_groups_data.append({
-                "id": group.id,
-                "name": group.name,
-                "question_type": group.question_type,
-                "content": group.content,
-                "questions": questions_data
-            })
+                # FIXED: Move this append INSIDE the group loop
+                question_groups_data.append({
+                    "id": group.id,
+                    "name": group.name,
+                    "question_type": group.question_type,
+                    "content": group.content,
+                    "questions": questions_data
+                })
             
             sections_data.append({
                 "id": section.id,

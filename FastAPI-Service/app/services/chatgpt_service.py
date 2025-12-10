@@ -483,87 +483,209 @@ Make it realistic and follow IELTS Listening standards.
 """
         elif exam_type.upper() == "IELTS" and skill.lower() == "writing":
             prompt = f"""
-Generate IELTS Writing tasks
+Generate IELTS Writing test on topic: {topic}
 
-Requirements:
-- Task 1: Describe a chart/graph/diagram (150 words minimum)
-- Task 2: Essay question on topic: {topic} (250 words minimum)
-- Follow official IELTS Writing format
+CRITICAL Requirements:
+- Generate exactly 2 tasks following official IELTS Writing format
+- Task 1: Academic Task 1 with DATA TABLE (not image) - 150 words minimum, 20 minutes
+- Task 2: Essay on given topic - 250 words minimum, 40 minutes
+- Use authentic IELTS language and instructions
+- Ensure the topic '{topic}' is incorporated into Task 2
 
-Format your response as a JSON object:
+IMPORTANT for Task 1:
+- Create REAL DATA TABLES using text format (not images)
+- Use realistic statistics and numbers
+- Tables should be clear and well-formatted
+- Include 1-3 tables with related data
+
+Format your response as a JSON object with this EXACT structure:
 {{
-  "tasks": [
+  "question_groups": [
     {{
-      "task_number": 1,
-      "time": "20 minutes",
+      "group_name": "WRITING TASK 1",
+      "question_type": "essay",
       "instruction": "You should spend about 20 minutes on this task.",
-      "prompt": "The chart below shows... Summarise the information...",
-      "chart_description": "Description of what chart shows",
-      "word_count": 150,
-      "sample_answer": "Optional sample answer for reference"
+      "questions": [
+        {{
+          "content": "The table(s) below show [description of data].\\n\\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.\\n\\nWrite at least 150 words.",
+          "question_type": "essay",
+          "correct_answer": "",
+          "explanation": "Task 1 requires describing visual information from tables. Focus on: overview, key features, comparisons, trends. Use formal academic language.",
+          "points": 1,
+          "chart_data": "\\n\\n[Table Title]\\nYear | Category | Value\\n1990 | Category A | 100\\n2000 | Category A | 150\\n2010 | Category A | 200\\n\\n[Second Table if needed]\\nRegion | Population | Percentage\\nNorth | 5,000,000 | 45%\\nSouth | 6,000,000 | 55%",
+          "word_count": 150,
+          "time_minutes": 20
+        }}
+      ]
     }},
     {{
-      "task_number": 2,
-      "time": "40 minutes",
+      "group_name": "WRITING TASK 2",
+      "question_type": "essay",
       "instruction": "You should spend about 40 minutes on this task.",
-      "prompt": "Some people believe that... To what extent do you agree or disagree?",
-      "word_count": 250,
-      "sample_answer": "Optional sample answer for reference"
+      "questions": [
+        {{
+          "content": "Write about the following topic:\\n\\n[Essay question related to {topic}]\\n\\nGive reasons for your answer and include any relevant examples from your own knowledge or experience.\\n\\nWrite at least 250 words.",
+          "question_type": "essay",
+          "correct_answer": "",
+          "explanation": "Task 2 is an essay requiring a clear position, well-developed arguments with examples, and logical structure. Band 7+ requires: clear position, coherent paragraphs, range of vocabulary and grammar, relevant examples.",
+          "points": 2,
+          "word_count": 250,
+          "time_minutes": 40
+        }}
+      ]
     }}
   ]
 }}
+
+EXAMPLE of Task 1 with data tables (Use THIS format):
+{{
+  "content": "The tables below show changes in population statistics.\\n\\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.\\n\\nWrite at least 150 words.",
+  "chart_data": "\\n\\nTotal Population\\nYear | Population\\n1990 | 5,000,000\\n2000 | 7,500,000\\n2010 | 10,000,000\\n\\n\\nAge Distribution\\nAge Group | 1990 (%) | 2010 (%)\\n0-18 | 30% | 25%\\n19-64 | 60% | 65%\\n65+ | 10% | 10%"
+}}
+
+Example topics for Task 2:
+- Opinion essay: "To what extent do you agree or disagree?"
+- Discussion: "Discuss both views and give your opinion"
+- Problem-solution: "What are the causes and solutions?"
+- Two-part question: "Why is this the case? Is this positive or negative?"
+
+REMEMBER:
+- Task 1 MUST include "chart_data" field with REAL TABLE DATA (text format)
+- Use realistic numbers and statistics
+- Make tables clear and easy to read
+- Relate to topic '{topic}' where possible
+
+Make the questions realistic, relevant to {topic}, and following official IELTS standards.
 """
         elif exam_type.upper() == "IELTS" and skill.lower() == "speaking":
             prompt = f"""
 Generate IELTS Speaking test on topic: {topic}
 
-Requirements:
-- Part 1: 4-5 general questions (4-5 minutes)
-- Part 2: Long turn with cue card (3-4 minutes including prep)
-- Part 3: 4-5 discussion questions (4-5 minutes)
-- Follow official IELTS Speaking format
+CRITICAL Requirements:
+- Generate exactly 3 parts following official IELTS Speaking format
+- Part 1: Introduction and Interview - 4-5 personal questions (4-5 minutes)
+- Part 2: Long Turn with cue card - 1 topic with 4 bullet points (3-4 minutes)
+- Part 3: Discussion - 4-6 abstract questions (4-5 minutes)
+- Use authentic IELTS language and relate to topic '{topic}'
 
-Format your response as a JSON object:
+Format your response as a JSON object with this EXACT structure:
 {{
-  "parts": [
+  "question_groups": [
     {{
-      "part_number": 1,
-      "title": "Introduction and Interview",
-      "duration": "4-5 minutes",
+      "group_name": "PART 1",
+      "question_type": "spoken_question",
       "instruction": "The examiner asks you about yourself, your home, work or studies and other familiar topics.",
       "questions": [
-        "Question 1 about {topic}?",
-        "Question 2?",
-        ...
+        {{
+          "content": "How much [activity] do you do in your daily life?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "Part 1 questions are personal and about familiar topics. Keep answers short (20-30 seconds).",
+          "points": 1,
+          "metadata": {{"part": 1, "duration": "4-5 minutes"}}
+        }},
+        {{
+          "content": "Did you [activity] more when you were younger?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "",
+          "points": 1,
+          "metadata": {{"part": 1}}
+        }},
+        {{
+          "content": "What places are there to [activity] near where you live?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "",
+          "points": 1,
+          "metadata": {{"part": 1}}
+        }},
+        {{
+          "content": "Do you think [topic-related question]?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "",
+          "points": 1,
+          "metadata": {{"part": 1}}
+        }}
       ]
     }},
     {{
-      "part_number": 2,
-      "title": "Long Turn",
-      "duration": "3-4 minutes",
-      "instruction": "You will have to talk about the topic for one to two minutes. You have one minute to think about what you are going to say.",
-      "cue_card": {{
-        "topic": "Describe...",
-        "points": [
-          "what...",
-          "when...",
-          "why...",
-          "and explain..."
-        ]
-      }}
+      "group_name": "PART 2",
+      "question_type": "cue_card",
+      "instruction": "You will have to talk about the topic for one to two minutes. You have one minute to think about what you are going to say. You can make some notes to help you if you wish.",
+      "questions": [
+        {{
+          "content": "Describe [a person/place/event/experience related to {topic}].\\n\\nYou should say:\\n• what [first point]\\n• who/where/when [second point]\\n• what [third point]\\n• and explain why [fourth point]",
+          "question_type": "cue_card",
+          "correct_answer": "",
+          "explanation": "Part 2 requires a 1-2 minute monologue. Use the 4 bullet points to structure your talk. Include details, examples, and personal experiences.",
+          "points": 2,
+          "metadata": {{
+            "part": 2,
+            "duration": "3-4 minutes",
+            "prep_time": "1 minute",
+            "talk_time": "1-2 minutes"
+          }}
+        }}
+      ]
     }},
     {{
-      "part_number": 3,
-      "title": "Discussion",
-      "duration": "4-5 minutes",
+      "group_name": "PART 3",
+      "question_type": "spoken_question",
+      "instruction": "The examiner asks more abstract questions related to the Part 2 topic.",
       "questions": [
-        "Abstract question 1?",
-        "Abstract question 2?",
-        ...
+        {{
+          "content": "What are the most popular [topic-related] in your country?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "Part 3 questions are more abstract and require longer, more developed answers with opinions and examples.",
+          "points": 1,
+          "metadata": {{"part": 3, "duration": "4-5 minutes"}}
+        }},
+        {{
+          "content": "How [topic-related comparison question]?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "",
+          "points": 1,
+          "metadata": {{"part": 3}}
+        }},
+        {{
+          "content": "Do you think [future/opinion question about {topic}]?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "",
+          "points": 1,
+          "metadata": {{"part": 3}}
+        }},
+        {{
+          "content": "What [advantages/disadvantages/qualities] related to {topic}?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "",
+          "points": 1,
+          "metadata": {{"part": 3}}
+        }},
+        {{
+          "content": "Can you think of [hypothetical/complex question]?",
+          "question_type": "spoken_question",
+          "correct_answer": "",
+          "explanation": "",
+          "points": 1,
+          "metadata": {{"part": 3}}
+        }}
       ]
     }}
   ]
 }}
+
+EXAMPLE for topic "Theatre and Entertainment":
+Part 1: Personal questions about entertainment habits
+Part 2: "Describe a play or film you saw that you'd like to see again with friends"
+Part 3: Abstract questions about theatre industry, actors, audience trends
+
+Make the questions realistic, relevant to {topic}, natural, and following official IELTS Speaking standards.
 """
         else:
             # Original prompt for other skills/exams
@@ -778,7 +900,14 @@ Be fair and constructive.
                                 all_questions.append(q)
                         return all_questions
                     
-                    # IELTS Writing format: tasks
+                    # IELTS Writing format: NEW format with question_groups (preferred)
+                    elif "question_groups" in data and skill.lower() == "writing":
+                        # Return the new format directly - it's already structured correctly
+                        return {
+                            "question_groups": data["question_groups"]
+                        }
+                    
+                    # IELTS Writing format: OLD format with tasks (backward compatibility)
                     elif "tasks" in data and skill.lower() == "writing":
                         questions = []
                         for task in data["tasks"]:

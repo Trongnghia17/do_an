@@ -113,7 +113,12 @@ const SkillDetail = () => {
       setLoading(true);
       
       // Fetch skill detail
-      const skillData = await adminService.getSkillById(skillId);
+      const response = await adminService.getSkillById(skillId);
+      console.log('Skill API response:', response);
+      
+      // Extract data from response (API returns {data: {...}, success: true})
+      const skillData = response.data || response;
+      console.log('Skill data extracted:', skillData);
       
       // Transform API data to UI format
       setSkill({

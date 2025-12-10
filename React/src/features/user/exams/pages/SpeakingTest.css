@@ -45,16 +45,18 @@
 .speaking-test__instruction {
   padding: 16px 20px;
   background: #EFF6FF;
-  color: #0537A5;
-  font-size: 16px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: normal;
+  border-left: 4px solid #0537A5;
+  border-radius: 4px;
   margin-bottom: 32px;
 }
 
-.speaking-test__instruction p {
+.speaking-test__instruction-text {
   margin: 0;
+  color: #0537A5;
+  font-size: 16px;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.6;
 }
 
 /* Questions */
@@ -92,6 +94,10 @@
 .speaking-test__question-text {
   font-size: 16px;
   color: #374151;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  display: block;
+  margin-top: 8px;
 }
 
 .speaking-test__question-text p {

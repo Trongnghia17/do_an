@@ -170,10 +170,24 @@ export default function ReadingTest() {
                 
                 switch (questionType) {
                   case 'multiple_choice':
-                    // Get from metadata.answers
+                    // Get from question.options (new API format) or metadata.answers (old format)
                     if (group.questions && group.questions.length > 0) {
                       const firstQuestion = group.questions[0];
-                      if (firstQuestion.metadata) {
+                      
+                      // Check if options array exists directly on the question
+                      if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
+                        options = firstQuestion.options.map((_, index) => String.fromCharCode(65 + index));
+                        optionsWithContent = firstQuestion.options.map((option, index) => {
+                          let content = option.answer_content || option.content || '';
+                          content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                          return {
+                            letter: String.fromCharCode(65 + index),
+                            content: content
+                          };
+                        });
+                      }
+                      // Fallback to metadata if options not found
+                      else if (firstQuestion.metadata) {
                         const metadata = typeof firstQuestion.metadata === 'string' 
                           ? JSON.parse(firstQuestion.metadata) 
                           : firstQuestion.metadata;
@@ -181,7 +195,7 @@ export default function ReadingTest() {
                         if (metadata.answers && Array.isArray(metadata.answers)) {
                           options = metadata.answers.map((_, index) => String.fromCharCode(65 + index));
                           optionsWithContent = metadata.answers.map((answer, index) => {
-                            let content = answer.content || '';
+                            let content = answer.answer_content || answer.content || '';
                             content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
                             return {
                               letter: String.fromCharCode(65 + index),
@@ -234,8 +248,13 @@ export default function ReadingTest() {
         } else if (skillId) {
           // Lấy data cho full test (nhiều parts/sections)
           const response = await getSkillById(skillId, { with_sections: true });
+          console.log('Full API Response:', response);
+          console.log('Skill data:', response.data);
+          
           if (response.data.success) {
             const skill = response.data.data;
+            console.log('Skill extracted:', skill);
+            console.log('Number of sections:', skill.sections?.length);
             setSkillData(skill);
             
             // Lấy tất cả question groups từ tất cả sections
@@ -246,6 +265,9 @@ export default function ReadingTest() {
             
             if (skill.sections && skill.sections.length > 0) {
               skill.sections.forEach((section, sectionIndex) => {
+                console.log(`Processing section ${sectionIndex + 1}:`, section);
+                console.log(`Number of question_groups in section ${sectionIndex + 1}:`, section.question_groups?.length);
+                
                 const partNumber = sectionIndex + 1;
                 const groupStartIndex = allGroups.length;
                 
@@ -260,7 +282,12 @@ export default function ReadingTest() {
                 
                 // Lấy question groups
                 if (section.question_groups) {
-                  section.question_groups.forEach(group => {
+                  console.log(`Processing ${section.question_groups.length} question groups for section ${sectionIndex + 1}`);
+                  
+                  section.question_groups.forEach((group, groupIndex) => {
+                    console.log(`  Group ${groupIndex + 1}:`, group);
+                    console.log(`  Number of questions in group:`, group.questions?.length);
+                    
                     const questions = [];
                     if (group.questions) {
                       group.questions.forEach((q) => {
@@ -281,25 +308,85 @@ export default function ReadingTest() {
                     
                     switch (questionType) {
                       case 'multiple_choice':
-                        // Get from metadata.answers
+                        console.log('Processing multiple_choice group:', group);
+                        console.log('Group questions:', group.questions);
+                        
+                        // For multiple choice, check if options are directly on questions
                         if (group.questions && group.questions.length > 0) {
                           const firstQuestion = group.questions[0];
-                          if (firstQuestion.metadata) {
-                            const metadata = typeof firstQuestion.metadata === 'string' 
-                              ? JSON.parse(firstQuestion.metadata) 
-                              : firstQuestion.metadata;
+                          console.log('First question:', firstQuestion);
+                          console.log('First question options:', firstQuestion.options);
+                          
+                          // Check if options array exists directly on the question
+                          if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
+                            options = firstQuestion.options.map((_, index) => String.fromCharCode(65 + index));
+                            optionsWithContent = firstQuestion.options.map((option, index) => {
+                              let content = option.answer_content || option.content || '';
+                              content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                              return {
+                                letter: String.fromCharCode(65 + index),
+                                content: content
+                              };
+                            });
+                            console.log('✓ Options extracted directly from question.options');
+                            console.log('Final options:', options);
+                            console.log('Final optionsWithContent:', optionsWithContent);
+                          }
+                          // Fallback: Try metadata if options not found
+                          else if (firstQuestion.metadata) {
+                            let metadata = firstQuestion.metadata;
                             
-                            if (metadata.answers && Array.isArray(metadata.answers)) {
+                            // Parse if string
+                            if (typeof metadata === 'string') {
+                              try {
+                                metadata = JSON.parse(metadata);
+                              } catch (e) {
+                                console.error('Failed to parse metadata:', e);
+                                metadata = null;
+                              }
+                            }
+                            
+                            console.log('Parsed metadata:', metadata);
+                            
+                            // FORMAT 1: metadata = {answers: [{answer_content: "...", is_correct: true}, ...]}
+                            if (metadata && metadata.answers && Array.isArray(metadata.answers)) {
                               options = metadata.answers.map((_, index) => String.fromCharCode(65 + index));
                               optionsWithContent = metadata.answers.map((answer, index) => {
-                                let content = answer.content || '';
+                                let content = answer.answer_content || answer.content || '';
                                 content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
                                 return {
                                   letter: String.fromCharCode(65 + index),
                                   content: content
                                 };
                               });
+                              console.log('✓ Format 1: Options extracted from metadata.answers');
                             }
+                            // FORMAT 2: metadata = [{answer_content: "...", is_correct: true}, ...]
+                            else if (metadata && Array.isArray(metadata) && metadata.length > 0 && typeof metadata[0] === 'object') {
+                              options = metadata.map((_, index) => String.fromCharCode(65 + index));
+                              optionsWithContent = metadata.map((answer, index) => {
+                                let content = answer.answer_content || answer.content || '';
+                                content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                                return {
+                                  letter: String.fromCharCode(65 + index),
+                                  content: content
+                                };
+                              });
+                              console.log('✓ Format 2: Options extracted from metadata array (answer_content)');
+                            }
+                            // FORMAT 3: Simple array ["Option A", "Option B", ...]
+                            else if (metadata && Array.isArray(metadata) && typeof metadata[0] === 'string') {
+                              options = metadata.map((_, index) => String.fromCharCode(65 + index));
+                              optionsWithContent = metadata.map((content, index) => ({
+                                letter: String.fromCharCode(65 + index),
+                                content: content
+                              }));
+                              console.log('✓ Format 3: Options extracted from simple array');
+                            } else {
+                              console.warn('⚠ metadata format not recognized:', metadata);
+                            }
+                          } else {
+                            console.warn('⚠ No options found in question.options or metadata');
                           }
                         }
                         break;
@@ -353,6 +440,11 @@ export default function ReadingTest() {
               setPassages(allPassages);
               setParts(allParts);
             }
+            
+            console.log('Total question groups collected:', allGroups.length);
+            console.log('All groups:', allGroups);
+            console.log('All passages:', allPassages);
+            console.log('All parts:', allParts);
             
             setQuestionGroups(allGroups);
             
@@ -421,6 +513,11 @@ export default function ReadingTest() {
 
   const currentPassage = passages.find(p => p.part === currentPartTab) || passages[0];
   const currentPartGroups = questionGroups.filter(g => g.part === currentPartTab);
+  
+  console.log('Current part tab:', currentPartTab);
+  console.log('All question groups:', questionGroups);
+  console.log('Current part groups (filtered):', currentPartGroups);
+  console.log('Number of groups for current part:', currentPartGroups.length);
 
   // Render câu hỏi dựa trên loại question type
   const renderQuestionsByType = (group, answers, handleAnswerSelect) => {
