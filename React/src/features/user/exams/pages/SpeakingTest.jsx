@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { message } from 'antd';
 import TestLayout from '../components/TestLayout';
 import { getSkillById, getSectionById } from '../api/exams.api';
+import fastapiService from '@/services/fastapi.service';
 import './SpeakingTest.css';
 
 const SpeakingTest = () => {
@@ -148,10 +150,57 @@ const SpeakingTest = () => {
     }
   };
 
-  const handleSubmit = () => {
-    console.log('Submitting recordings:', recordings);
-    // TODO: Submit to API
-    navigate('/exams/result');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+
+      // Chuẩn bị dữ liệu submit
+      // Với Speaking, answers sẽ chứa đường dẫn file audio hoặc blob data
+      const answersArray = Object.entries(recordings).map(([questionId, audioData]) => ({
+        question_id: parseInt(questionId),
+        answer_audio: audioData // URL hoặc base64 của audio đã upload
+      }));
+
+      // Nếu có text answers thì thêm vào
+      Object.entries(answers).forEach(([questionId, answerText]) => {
+        const existingAnswer = answersArray.find(a => a.question_id === parseInt(questionId));
+        if (existingAnswer) {
+          existingAnswer.answer_text = answerText;
+        } else {
+          answersArray.push({
+            question_id: parseInt(questionId),
+            answer_text: answerText
+          });
+        }
+      });
+
+      const submitData = {
+        exam_skill_id: parseInt(skillId),
+        exam_section_id: sectionId ? parseInt(sectionId) : null,
+        answers: answersArray,
+        time_spent: (skillData?.time_limit * 60 || 900) - timeRemaining
+      };
+
+      console.log('Submitting data:', submitData);
+
+      // Gửi lên server
+      const response = await fastapiService.submission.submitExam(submitData);
+      
+      console.log('Submit response:', response.data);
+      
+      message.success('Nộp bài thành công!');
+      
+      // Chuyển đến trang kết quả
+      navigate(`/exams/result/${response.data.id}`);
+      
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      message.error('Không thể nộp bài. Vui lòng thử lại.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const currentPartGroups = questionGroups.filter(g => g.part === currentPartTab);
@@ -185,6 +234,7 @@ const SpeakingTest = () => {
       showQuestionNumbers={true}
       fontSize={fontSize}
       onFontSizeChange={setFontSize}
+      submitting={submitting}
     >
       <div className="main_v2">
         <div className={`speaking-test__content ${fontSize !== 'normal' ? `speaking-test__content--${fontSize}` : ''}`}>

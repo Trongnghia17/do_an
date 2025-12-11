@@ -116,6 +116,13 @@ export const uploadAPI = {
   deleteAudio: (filename) => api.delete('/upload/audio', { params: { filename } }),
 };
 
+// ========== Exam Submissions ==========
+export const submissionAPI = {
+  submitExam: (data) => api.post('/submissions/submit', data),
+  getMySubmissions: (params) => api.get('/submissions/my-submissions', { params }),
+  getSubmissionDetail: (submissionId) => api.get(`/submissions/submissions/${submissionId}`),
+};
+
 // Export all as default
 export default {
   auth: authAPI,
@@ -128,6 +135,7 @@ export default {
   skill: skillAPI,
   section: sectionAPI,
   group: groupAPI,
+  submission: submissionAPI,
   client: api, // Export raw client for custom requests
 };
 

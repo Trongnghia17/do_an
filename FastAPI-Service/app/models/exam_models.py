@@ -154,6 +154,66 @@ class ExamQuestion(Base):
 
     # Relationships
     question_group = relationship("ExamQuestionGroup", back_populates="questions")
+    user_answers = relationship("UserExamAnswer", back_populates="question", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<ExamQuestion {self.id}: {self.question_type}>"
+
+
+class SubmissionStatus(str, enum.Enum):
+    """Submission status enum"""
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    GRADED = "graded"
+
+
+class ExamSubmission(Base):
+    """Exam Submissions table - Bài nộp của học sinh"""
+    __tablename__ = "exam_submissions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    exam_skill_id = Column(Integer, ForeignKey("exam_skills.id", ondelete="CASCADE"), nullable=False)
+    exam_section_id = Column(Integer, ForeignKey("exam_sections.id", ondelete="CASCADE"), nullable=True)
+    status = Column(String(50), default=SubmissionStatus.IN_PROGRESS, nullable=False)
+    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    submitted_at = Column(DateTime, nullable=True)
+    time_spent = Column(Integer, nullable=True)  # seconds
+    total_score = Column(Integer, nullable=True)
+    max_score = Column(Integer, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    exam_skill = relationship("ExamSkill")
+    exam_section = relationship("ExamSection")
+    answers = relationship("UserExamAnswer", back_populates="submission", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<ExamSubmission {self.id}: User {self.user_id} - Status {self.status}>"
+
+
+class UserExamAnswer(Base):
+    """User Exam Answers table - Câu trả lời của học sinh"""
+    __tablename__ = "user_exam_answers"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    submission_id = Column(Integer, ForeignKey("exam_submissions.id", ondelete="CASCADE"), nullable=False)
+    question_id = Column(Integer, ForeignKey("exam_questions.id", ondelete="CASCADE"), nullable=False)
+    answer_text = Column(Text, nullable=True)
+    answer_audio = Column(String(500), nullable=True)  # path to audio file for speaking
+    is_correct = Column(Boolean, nullable=True)
+    score = Column(Integer, nullable=True)
+    ai_feedback = Column(Text, nullable=True)  # JSON string with AI grading feedback
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    submission = relationship("ExamSubmission", back_populates="answers")
+    question = relationship("ExamQuestion", back_populates="user_answers")
+
+    def __repr__(self):
+        return f"<UserExamAnswer {self.id}: Question {self.question_id}>"

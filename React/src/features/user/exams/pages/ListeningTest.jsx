@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { message } from 'antd';
 import { getSkillById, getSectionById } from '../api/exams.api';
+import fastapiService from '@/services/fastapi.service';
 import TestLayout from '../components/TestLayout';
 import './ListeningTest.css';
 
@@ -373,15 +375,44 @@ const ListeningTest = () => {
   };
 
   // Xử lý nộp bài
-  const handleSubmit = () => {
-    // TODO: Gửi kết quả về server
-    const result = {
-      skillId,
-      sectionId,
-      answers,
-      timeSpent: (skillData?.time_limit * 60 || 2400) - timeRemaining
-    };
-    console.log('Submit result:', result);
+  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+
+      // Chuẩn bị dữ liệu submit
+      const answersArray = Object.entries(answers).map(([questionId, answerText]) => ({
+        question_id: parseInt(questionId),
+        answer_text: answerText
+      }));
+
+      const submitData = {
+        exam_skill_id: parseInt(skillId),
+        exam_section_id: sectionId ? parseInt(sectionId) : null,
+        answers: answersArray,
+        time_spent: (skillData?.time_limit * 60 || 2400) - timeRemaining
+      };
+
+      console.log('Submitting data:', submitData);
+
+      // Gửi lên server
+      const response = await fastapiService.submission.submitExam(submitData);
+      
+      console.log('Submit response:', response.data);
+      
+      message.success('Nộp bài thành công!');
+      
+      // Chuyển đến trang kết quả
+      navigate(`/exams/result/${response.data.id}`);
+      
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      message.error('Không thể nộp bài. Vui lòng thử lại.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Loading state
@@ -531,6 +562,7 @@ const ListeningTest = () => {
       showQuestionNumbers={true}
       fontSize={fontSize}
       onFontSizeChange={setFontSize}
+      submitting={submitting}
     >
       {/* Audio Player - Fixed at top */}
       {currentPartAudio && (

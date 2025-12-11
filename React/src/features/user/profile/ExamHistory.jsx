@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import api from '@/lib/axios';
+import { useNavigate } from 'react-router-dom';
+import fastapiService from '@/services/fastapi.service';
 import listening from '@/assets/images/writing.svg';
 import listening_active from '@/assets/images/listening_active.svg';
 import speaking from '@/assets/images/speaking.svg';
@@ -18,54 +19,55 @@ const TABS = [
 ];
 
 export default function ExamHistory() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [exams, setExams] = useState([]);
-  const [activeTab, setActiveTab] = useState('Listening');
+  const [submissions, setSubmissions] = useState([]);
+  const [activeTab, setActiveTab] = useState('listening');
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const res = await api.get('/user/exams'); // backend endpoint expected
+        // Gọi API lấy submissions của user
+        const res = await fastapiService.submission.getMySubmissions();
         if (!mounted) return;
-        setExams(Array.isArray(res.data) ? res.data : []);
+        
+        // Transform data từ API sang format hiển thị
+        const transformedData = (res.data || []).map(sub => {
+          // Tính số câu đúng/sai từ answers (nếu có)
+          const totalQuestions = sub.max_score || 0;
+          const correctAnswers = sub.total_score || 0;
+          const wrongAnswers = totalQuestions - correctAnswers;
+          
+          // Format thời gian làm bài
+          const formatDuration = (seconds) => {
+            if (!seconds) return '00:00:00';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+          };
+          
+          return {
+            id: sub.id,
+            skillType: sub.skill_type || 'unknown',
+            title: sub.skill_name || `Submission ${sub.id}`,
+            duration: formatDuration(sub.time_spent),
+            date: sub.submitted_at || sub.created_at,
+            correct: correctAnswers,
+            wrong: wrongAnswers,
+            skipped: 0,
+            status: sub.status
+          };
+        });
+        
+        setSubmissions(transformedData);
       } catch (err) {
         if (!mounted) return;
-        setError('Không thể load dữ liệu từ API, dùng dữ liệu thử nghiệm.');
-        // mock data for testing
-        setExams([
-          {
-            id: 1,
-            section: 'Listening',
-            title: 'Reading - Test 6 - Trainer 2',
-            duration: '01:00:32',
-            date: '2025-08-23',
-            correct: 30,
-            wrong: 5,
-            skipped: 0,
-          },
-          {
-            id: 2,
-            section: 'Listening',
-            title: 'Actual Test 1 - 2025 - Reading',
-            duration: '01:00:32',
-            date: '2025-08-20',
-            correct: 25,
-            wrong: 10,
-            skipped: 0,
-          },
-          {
-            id: 3,
-            section: 'Reading',
-            title: 'Actual Test 9 - 2025 - Reading',
-            duration: '00:50:10',
-            date: '2025-07-12',
-            correct: 40,
-            wrong: 2,
-            skipped: 0,
-          },
-        ]);
+        console.error('Error loading submissions:', err);
+        setError('Không thể tải lịch sử làm bài. Vui lòng thử lại sau.');
+        setSubmissions([]);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -74,7 +76,11 @@ export default function ExamHistory() {
     return () => { mounted = false; };
   }, []);
 
-  const rows = exams.filter((e) => e.section === activeTab);
+  const rows = submissions.filter((e) => e.skillType.toLowerCase() === activeTab.toLowerCase());
+
+  const handleViewDetail = (submissionId) => {
+    navigate(`/exams/result/${submissionId}`);
+  };
 
   return (
     <div className="exam-history">
@@ -83,12 +89,12 @@ export default function ExamHistory() {
       <div className="eh-card">
         <div className="eh-tabs" role="tablist">
           {TABS.map((t) => {
-            const isActive = t.key === activeTab;
+            const isActive = t.key.toLowerCase() === activeTab.toLowerCase();
             return (
               <button
                 key={t.key}
                 className={`eh-tab ${isActive ? 'active' : ''}`}
-                onClick={() => setActiveTab(t.key)}
+                onClick={() => setActiveTab(t.key.toLowerCase())}
                 role="tab"
                 aria-selected={isActive}
               >
@@ -133,16 +139,27 @@ export default function ExamHistory() {
                       return (
                         <tr key={r.id}>
                           <td className="eh-title-cell">
-                            <a className="eh-link" href="#!" onClick={(e) => e.preventDefault()}>
+                            <a 
+                              className="eh-link" 
+                              href="#!" 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleViewDetail(r.id);
+                              }}
+                            >
                               {r.title}
                             </a>
                           </td>
                           <td>{r.duration}</td>
-                          <td>{new Date(r.date).toLocaleDateString()}</td>
+                          <td>{new Date(r.date).toLocaleDateString('vi-VN')}</td>
                           <td>{r.correct ?? 0}</td>
                           <td>{r.wrong ?? 0}</td>
                           <td>{r.skipped ?? 0}</td>
-                          <td>{acc}%</td>
+                          <td>
+                            <span className={acc >= 70 ? 'text-success' : acc >= 50 ? 'text-warning' : 'text-danger'}>
+                              {acc}%
+                            </span>
+                          </td>
                         </tr>
                       );
                     })

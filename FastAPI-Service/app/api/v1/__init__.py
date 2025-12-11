@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, exams, users, questions, generation, grading, upload, skills, sections, groups, otp, oauth
+from app.api.v1.endpoints import auth, exams, users, questions, generation, grading, upload, skills, sections, groups, otp, oauth, submissions
 
 api_router = APIRouter()
 
@@ -35,6 +35,9 @@ api_router.include_router(generation.router, prefix="/generation", tags=["AI Gen
 
 # AI Grading with ChatGPT (✅ Ready!)
 api_router.include_router(grading.router, prefix="/grading", tags=["AI Grading"])
+
+# Exam Submissions (✅ Ready!)
+api_router.include_router(submissions.router, prefix="/submissions", tags=["submissions"])
 
 # File upload (✅ Ready!)
 api_router.include_router(upload.router, prefix="/upload", tags=["upload"])

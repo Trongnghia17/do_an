@@ -18,7 +18,8 @@ export default function TestLayout({
   children,
   showQuestionNumbers = true,
   fontSize: externalFontSize,
-  onFontSizeChange
+  onFontSizeChange,
+  submitting = false
 }) {
   const navigate = useNavigate();
   const [internalFontSize, setInternalFontSize] = useState('normal');
@@ -223,8 +224,12 @@ export default function TestLayout({
             </svg>
             <span>{formatTime(timeRemaining)}</span>
           </div>
-          <button className="test-layout__submit-button-header" onClick={handleSubmit}>
-            Nộp bài
+          <button 
+            className="test-layout__submit-button-header" 
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? 'Đang nộp bài...' : 'Nộp bài'}
           </button>
         </div>
       </div>

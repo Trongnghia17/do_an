@@ -12,7 +12,7 @@ from app.models.auth_models import Role
 
 
 async def seed_roles():
-    """Seed basic roles: admin and student"""
+    """Seed basic roles: admin, teacher and student"""
     async with AsyncSessionLocal() as session:
         try:
             # Kiểm tra xem đã có roles chưa
@@ -31,6 +31,13 @@ async def seed_roles():
                 is_active=True
             )
             
+            teacher_role = Role(
+                name="teacher",
+                display_name="Teacher",
+                description="Giáo viên - có quyền tạo đề thi, chấm bài và quản lý học sinh",
+                is_active=True
+            )
+            
             student_role = Role(
                 name="student",
                 display_name="Student",
@@ -39,12 +46,15 @@ async def seed_roles():
             )
             
             session.add(admin_role)
+            session.add(teacher_role)
             session.add(student_role)
             await session.commit()
             await session.refresh(admin_role)
+            await session.refresh(teacher_role)
             await session.refresh(student_role)
             
             print(f"✅ Created role: {admin_role.name} (ID: {admin_role.id})")
+            print(f"✅ Created role: {teacher_role.name} (ID: {teacher_role.id})")
             print(f"✅ Created role: {student_role.name} (ID: {student_role.id})")
             
             # Only create roles (permissions system removed)

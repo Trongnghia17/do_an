@@ -29,7 +29,10 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # Import all models here so Alembic can detect them
-from app.models.exam_models import Exam, ExamTest, ExamSkill, ExamSection, ExamQuestionGroup, ExamQuestion
+from app.models.exam_models import (
+    Exam, ExamTest, ExamSkill, ExamSection, ExamQuestionGroup, ExamQuestion,
+    ExamSubmission, UserExamAnswer
+)
 from app.models.auth_models import (
     User, UserIdentity, UserContact, OtpCode, LoginActivity,
     Role
