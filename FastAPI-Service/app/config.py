@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://127.0.0.1:8000/oauth/google/callback"
     FRONTEND_APP_URL: str = "http://localhost:5173"
 
+    # PayOS Configuration
+    PAYOS_CLIENT_ID: str = ""
+    PAYOS_API_KEY: str = ""
+    PAYOS_CHECKSUM_KEY: str = ""
+    PAYOS_RETURN_URL: str = "http://localhost:5173/lich-su-thanh-toan"
+    PAYOS_CANCEL_URL: str = "http://localhost:5173/lich-su-thanh-toan"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

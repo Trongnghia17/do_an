@@ -1,34 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 import cong from '@/assets/images/cong.svg';
+import PaymentModal from './PaymentModal';
 import './PaymentHistory.css';
 
 export default function PaymentHistory() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [wallet, setWallet] = useState(null);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await api.get('/user/payments'); // backend endpoint (optional)
-        if (!mounted) return;
-        setRows(Array.isArray(res.data) ? res.data : []);
-      } catch (err) {
-        if (!mounted) return;
-        setError('Không thể tải dữ liệu từ API, dùng dữ liệu mẫu.');
-        setRows([
-          { id: '1236645', time: '11:17 · 23/06/2025', eggs: 150, note: 'Gói chấm bài Writing - Speaking 1 tháng', status: 'done' },
-          { id: '3215946', time: '11:17 · 23/06/2025', eggs: 250, note: 'Gói chấm bài Writing - Speaking 3 tháng', status: 'pending' },
-          { id: '6514978', time: '11:17 · 23/06/2025', eggs: 650, note: 'Đăng ký tài khoản thành công', status: 'failed' },
-        ]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      // Fetch payment history and wallet in parallel
+      const [historyRes, walletRes] = await Promise.all([
+        api.get('/payments/history'),
+        api.get('/payments/wallet')
+      ]);
+      
+      setRows(Array.isArray(historyRes.data) ? historyRes.data : []);
+      setWallet(walletRes.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching payment data:', err);
+      setError('Không thể tải dữ liệu');
+      // Fallback data
+      setRows([
+        { id: '1236645', time: '11:17 · 23/06/2025', eggs: 150, note: 'Gói chấm bài Writing - Speaking 1 tháng', status: 'done' },
+        { id: '3215946', time: '11:17 · 23/06/2025', eggs: 250, note: 'Gói chấm bài Writing - Speaking 3 tháng', status: 'pending' },
+        { id: '6514978', time: '11:17 · 23/06/2025', eggs: 650, note: 'Đăng ký tài khoản thành công', status: 'failed' },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = (data) => {
+    // Refresh data after successful payment
+    fetchData();
+  };
 
   const statusLabel = (s) => {
     switch (s) {
@@ -42,9 +57,23 @@ export default function PaymentHistory() {
   return (
     <div className="payment-history">
       <div className="ph-header">
-        <h3 className="ph-title">LỊCH SỬ THANH TOÁN</h3>
+        <div className="ph-title-section">
+          <h3 className="ph-title">LỊCH SỬ THANH TOÁN</h3>
+          {wallet && (
+            <div className="ph-wallet-info">
+              <span className="ph-wallet-label">Số dư:</span>
+              <span className="ph-wallet-balance">{wallet.balance} 🥚</span>
+            </div>
+          )}
+        </div>
         <div className="ph-actions">
-          <button className="ph-btn ph-btn--primary"><img src={cong} alt="" /> <p className='ph-btn-text'>Nạp OWL</p></button>
+          <button 
+            className="ph-btn ph-btn--primary"
+            onClick={() => setShowPaymentModal(true)}
+          >
+            <img src={cong} alt="" /> 
+            <p className='ph-btn-text'>Nạp OWL</p>
+          </button>
         </div>
       </div>
 
@@ -53,8 +82,6 @@ export default function PaymentHistory() {
           <div className="ph-loading">Đang tải...</div>
         ) : (
           <>
-            {/* {error && <div className="ph-error">{error}</div>} */}
-
             <div className="ph-table-wrap">
               <table className="ph-table">
                 <thead>
@@ -84,6 +111,12 @@ export default function PaymentHistory() {
           </>
         )}
       </div>
+
+      <PaymentModal
+        visible={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 }

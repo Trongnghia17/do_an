@@ -12,13 +12,40 @@
     margin-bottom: 12px;
 }
 
+.ph-title-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
 .ph-title {
     font-size: 16px;
     color: #888888;
     letter-spacing: 0%;
-    margin-bottom: 12px;
+    margin-bottom: 0;
     text-transform: uppercase;
     font-weight: 600;
+}
+
+.ph-wallet-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #F0F7FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 8px;
+    padding: 6px 16px;
+}
+
+.ph-wallet-label {
+    font-size: 14px;
+    color: #6B7280;
+}
+
+.ph-wallet-balance {
+    font-size: 16px;
+    font-weight: 700;
+    color: #045CCE;
 }
 
 .ph-actions {

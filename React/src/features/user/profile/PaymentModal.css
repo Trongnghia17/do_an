@@ -1,0 +1,179 @@
+.payment-modal .pm-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 16px;
+}
+
+.payment-modal .pm-packages {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 20px 0;
+}
+
+.pm-package {
+  border: 2px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #FFFFFF;
+}
+
+.pm-package:hover {
+  border-color: #045CCE;
+  box-shadow: 0 4px 12px rgba(4, 92, 206, 0.15);
+  transform: translateY(-2px);
+}
+
+.pm-package.selected {
+  border-color: #045CCE;
+  background: #F0F7FF;
+}
+
+.pm-package-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.pm-package-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.pm-package-bonus {
+  font-size: 12px;
+  font-weight: 600;
+  color: #10B981;
+  background: #D1FAE5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.pm-package-owl {
+  font-size: 32px;
+  font-weight: 700;
+  color: #045CCE;
+  margin: 8px 0;
+}
+
+.pm-package-label {
+  font-size: 14px;
+  color: #6B7280;
+}
+
+/* QR Code View */
+.pm-qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.pm-qr-wrapper {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+}
+
+.pm-payment-info {
+  width: 100%;
+  background: #F9FAFB;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.pm-payment-info h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+.pm-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #E5E7EB;
+}
+
+.pm-info-row:last-child {
+  border-bottom: none;
+}
+
+.pm-info-row span {
+  color: #6B7280;
+  font-size: 14px;
+}
+
+.pm-info-row strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pm-owl-amount {
+  color: #045CCE !important;
+  font-size: 16px !important;
+}
+
+.pm-instructions {
+  width: 100%;
+  background: #FEF3C7;
+  border-left: 4px solid #F59E0B;
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.pm-instructions p {
+  margin: 6px 0;
+  font-size: 13px;
+  color: #92400E;
+  line-height: 1.5;
+}
+
+.pm-checking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  color: #6B7280;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .payment-modal .pm-packages {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .pm-package {
+    padding: 16px;
+  }
+
+  .pm-package-amount {
+    font-size: 16px;
+  }
+
+  .pm-package-owl {
+    font-size: 28px;
+  }
+
+  .pm-qr-wrapper svg {
+    width: 240px !important;
+    height: 240px !important;
+  }
+}
