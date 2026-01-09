@@ -18,6 +18,7 @@ import ReadingTest from '../features/user/exams/pages/ReadingTest';
 import WritingTest from '../features/user/exams/pages/WritingTest';
 import SpeakingTest from '../features/user/exams/pages/SpeakingTest';
 import ListeningTest from '../features/user/exams/pages/ListeningTest';
+import TestResult from '../features/user/exams/pages/TestResult';
 import Profile from '../features/user/profile/Profile';
 import ExamHistory from '../features/user/profile/ExamHistory';
 import PaymentHistory from '../features/user/profile/PaymentHistory';
@@ -108,6 +109,12 @@ export const router = createBrowserRouter([
   {
     path: '/exam/full/:skillId/test/listening',
     element: <ListeningTest />,
+  },
+
+  // Test Result Page - Trang kết quả
+  {
+    path: '/exams/result/:resultId',
+    element: <TestResult />,
   },
 
   // phần thi TOEIC

@@ -32,3 +32,7 @@ export const getQuestionGroup = (id, params) =>
 
 export const getQuestionsByGroup = (groupId, params) => 
   api.get(`/groups/${groupId}/questions/`, { params });
+
+// Lấy kết quả bài thi
+export const getTestResult = (resultId) => 
+  api.get(`/submissions/${resultId}/`);

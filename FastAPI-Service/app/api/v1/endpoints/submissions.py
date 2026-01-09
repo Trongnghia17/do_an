@@ -11,7 +11,7 @@ import json
 
 from app.models.exam_models import (
     ExamSubmission, UserExamAnswer, ExamQuestion, 
-    ExamSkill, ExamSection, SubmissionStatus
+    ExamSkill, ExamSection, SubmissionStatus, ExamQuestionGroup
 )
 from app.database import get_db
 from app.auth import get_current_user
@@ -80,12 +80,40 @@ class SubmissionResponse(BaseModel):
 
 
 class SubmissionDetailResponse(BaseModel):
-    """Detailed response model for submission with grading"""
-    submission: SubmissionResponse
-    skill_name: Optional[str]
-    section_name: Optional[str]
+    """Detailed response model for submission with grading - Flattened for frontend"""
+    # Submission basic info
+    id: int
+    user_id: int
+    exam_skill_id: int
+    exam_section_id: Optional[int]
+    status: str
+    started_at: datetime
+    submitted_at: Optional[datetime]
+    time_spent: Optional[int]
+    total_score: Optional[float]
+    max_score: Optional[float]
+    created_at: datetime
+    updated_at: datetime
+    
+    # Skill and section info
+    skill: Optional[Dict[str, Any]] = None  # Contains skill_type, name, etc.
+    exam: Optional[Dict[str, Any]] = None
+    section_name: Optional[str] = None
+    
+    # Statistics
     total_questions: int
     answered_questions: int
+    correct_answers: Optional[int] = None
+    
+    # Teacher grading (for speaking/writing)
+    teacher_score: Optional[float] = None
+    teacher_feedback: Optional[str] = None
+    
+    # Answers with details
+    answers: List[Dict[str, Any]] = []
+    
+    class Config:
+        from_attributes = True
 
 
 # ============================================
@@ -179,12 +207,15 @@ async def submit_exam(
             is_correct = None
             score = None
             
-            if question.question_type in ["multiple_choice", "fill_blank", "true_false"] and question.correct_answer:
+            print(f"🎯 Q{answer_data.question_id}: question_type='{question.question_type}', correct_answer='{question.correct_answer}'")
+            
+            if question.question_type in ["multiple_choice", "fill_blank", "true_false", "yes_no", "yes_no_not_given"] and question.correct_answer:
                 user_answer = (answer_data.answer_text or "").strip().lower()
                 correct_answer = (question.correct_answer or "").strip().lower()
                 is_correct = user_answer == correct_answer
                 score = question.points if is_correct else 0
                 total_score += score
+                print(f"✅ Q{answer_data.question_id}: user='{user_answer}', correct='{correct_answer}', is_correct={is_correct}, score={score}")
             
             max_score += question.points
             
@@ -342,7 +373,7 @@ async def get_my_submissions(
         )
 
 
-@router.get("/submissions/{submission_id}", response_model=SubmissionDetailResponse)
+@router.get("/{submission_id}")
 async def get_submission_detail(
     submission_id: int,
     db: AsyncSession = Depends(get_db),
@@ -368,16 +399,32 @@ async def get_submission_detail(
                 detail="Submission not found"
             )
         
-        # Get answers
+        # Get ALL questions from the skill (not just answered ones)
+        questions_result = await db.execute(
+            select(ExamQuestion, ExamQuestionGroup, ExamSection)
+            .join(ExamQuestionGroup, ExamQuestion.question_group_id == ExamQuestionGroup.id)
+            .join(ExamSection, ExamQuestionGroup.exam_section_id == ExamSection.id)
+            .where(
+                ExamSection.exam_skill_id == submission.exam_skill_id,
+                ExamQuestion.deleted_at.is_(None),
+                ExamQuestionGroup.deleted_at.is_(None),
+                ExamSection.deleted_at.is_(None)
+            )
+            .order_by(ExamSection.id, ExamQuestion.id)
+        )
+        all_questions = questions_result.all()
+        
+        # Get user's answers
         answers_result = await db.execute(
-            select(UserExamAnswer).where(
+            select(UserExamAnswer)
+            .where(
                 UserExamAnswer.submission_id == submission_id,
                 UserExamAnswer.deleted_at.is_(None)
             )
         )
-        answers = answers_result.scalars().all()
+        user_answers = {ans.question_id: ans for ans in answers_result.scalars().all()}
         
-        # Get skill name
+        # Get skill info
         skill_result = await db.execute(
             select(ExamSkill).where(ExamSkill.id == submission.exam_skill_id)
         )
@@ -393,43 +440,104 @@ async def get_submission_detail(
             if section:
                 section_name = section.name
         
-        # Count questions
-        total_questions = len(answers)
-        answered_questions = sum(1 for ans in answers if ans.answer_text or ans.answer_audio)
+        # Process ALL questions and merge with user answers
+        answers_list = []
+        correct_count = 0
+        overall_question_number = 1
         
-        return SubmissionDetailResponse(
-            submission=SubmissionResponse(
-                id=submission.id,
-                user_id=submission.user_id,
-                exam_skill_id=submission.exam_skill_id,
-                exam_section_id=submission.exam_section_id,
-                status=submission.status,
-                started_at=submission.started_at,
-                submitted_at=submission.submitted_at,
-                time_spent=submission.time_spent,
-                total_score=submission.total_score,
-                max_score=submission.max_score,
-                created_at=submission.created_at,
-                updated_at=submission.updated_at,
-                answers=[
-                    AnswerResponse(
-                        id=ans.id,
-                        question_id=ans.question_id,
-                        answer_text=ans.answer_text,
-                        answer_audio=ans.answer_audio,
-                        is_correct=ans.is_correct,
-                        score=ans.score,
-                        ai_feedback=json.loads(ans.ai_feedback) if ans.ai_feedback else None,
-                        created_at=ans.created_at
-                    )
-                    for ans in answers
-                ]
-            ),
-            skill_name=skill.name if skill else None,
-            section_name=section_name,
-            total_questions=total_questions,
-            answered_questions=answered_questions
-        )
+        for question, question_group, section in all_questions:
+            # Get user's answer for this question (if exists)
+            user_answer = user_answers.get(question.id)
+            
+            # Determine correctness
+            is_correct = False
+            if user_answer:
+                is_correct = user_answer.is_correct if user_answer.is_correct is not None else False
+                if is_correct:
+                    correct_count += 1
+            
+            # Get correct answer - convert to letter if it's a multiple choice question
+            correct_answer = question.correct_answer or "N/A"
+            
+            # If question has options (multiple choice), find the letter key for correct answer
+            if question.options:
+                try:
+                    options = json.loads(question.options) if isinstance(question.options, str) else question.options
+                    
+                    # Options can be:
+                    # 1. List of objects: [{"answer_content": "...", "is_correct": true/false}, ...]
+                    # 2. Dict: {"A": "...", "B": "..."}
+                    
+                    if isinstance(options, list) and len(options) > 0:
+                        # Find the index of the correct answer (where is_correct=true)
+                        for idx, option in enumerate(options):
+                            if isinstance(option, dict) and option.get('is_correct'):
+                                # Convert index to letter: 0→A, 1→B, 2→C, 3→D
+                                correct_answer = chr(65 + idx)  # 65 is ASCII for 'A'
+                                print(f"✅ Q{question.id}: Found correct answer at index {idx} → {correct_answer}")
+                                break
+                    
+                    elif isinstance(options, dict):
+                        # Dict format - find key that matches correct_answer value
+                        correct_answer_normalized = str(question.correct_answer).strip().lower()
+                        for key, value in options.items():
+                            value_normalized = str(value).strip().lower()
+                            if value_normalized == correct_answer_normalized:
+                                correct_answer = key
+                                print(f"✅ Q{question.id}: Found match - key={key}")
+                                break
+                        
+                except (json.JSONDecodeError, TypeError, AttributeError) as e:
+                    logger.warning(f"Failed to parse options for question {question.id}: {e}")
+                    pass  # Keep the original correct_answer if parsing fails
+            
+            # Get part name from section
+            part_name = section.name if section else "Part 1"
+            
+            answers_list.append({
+                "question_id": question.id,
+                "question_number": overall_question_number,
+                "part": part_name,
+                "user_answer": user_answer.answer_text if user_answer and user_answer.answer_text else "",
+                "correct_answer": correct_answer,
+                "is_correct": is_correct,
+                "score": user_answer.score if user_answer else None,
+                "ai_feedback": json.loads(user_answer.ai_feedback) if (user_answer and user_answer.ai_feedback) else None
+            })
+            overall_question_number += 1
+        
+        # Count questions
+        total_questions = len(answers_list)
+        answered_questions = sum(1 for ans in answers_list if ans["user_answer"])
+        
+        response_data = {
+            "id": submission.id,
+            "user_id": submission.user_id,
+            "exam_skill_id": submission.exam_skill_id,
+            "exam_section_id": submission.exam_section_id,
+            "status": submission.status,
+            "started_at": submission.started_at.isoformat() if submission.started_at else None,
+            "submitted_at": submission.submitted_at.isoformat() if submission.submitted_at else None,
+            "time_spent": submission.time_spent or 0,
+            "total_score": submission.total_score,
+            "max_score": submission.max_score,
+            "created_at": submission.created_at.isoformat() if submission.created_at else None,
+            "updated_at": submission.updated_at.isoformat() if submission.updated_at else None,
+            "skill": {
+                "name": skill.name if skill else None,
+                "skill_type": skill.skill_type.value if skill else None
+            },
+            "exam": None,  # TODO: Add exam info if needed
+            "section_name": section_name,
+            "total_questions": total_questions,
+            "answered_questions": answered_questions,
+            "correct_answers": correct_count,
+            "teacher_score": getattr(submission, 'teacher_score', None),
+            "teacher_feedback": getattr(submission, 'teacher_feedback', None),
+            "answers": answers_list
+        }
+        
+        return {"success": True, "data": response_data}
         
     except HTTPException:
         raise

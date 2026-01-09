@@ -136,11 +136,6 @@ const AdminLogin = () => {
               Email: admin@owlenglish.com<br />
               Password: admin123
             </div>
-            <div className='admin-demo-account'>
-              <strong>Super Admin:</strong><br />
-              Email: superadmin@owlenglish.com<br />
-              Password: super123
-            </div>
           </div>
         </div>
       </div>

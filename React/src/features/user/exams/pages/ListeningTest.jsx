@@ -8,6 +8,16 @@ import './ListeningTest.css';
 
 const containsInlinePlaceholders = (text) => /\{\{\s*[a-zA-Z0-9]+\s*\}\}/.test(text || '');
 
+const isJSONString = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  try {
+    JSON.parse(str);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 const GroupContentWithInlineInputs = ({ content, questions = [], answers = {}, onAnswerChange }) => {
   const containerRef = useRef(null);
   const placeholdersMetaRef = useRef([]);
@@ -135,10 +145,18 @@ const ListeningTest = () => {
             const section = response.data.data;
             setSectionData(section);
             
+            console.log('=== SECTION DATA ===');
+            console.log('Section:', section);
+            console.log('Section Audio URL:', section.audio_url);
+            console.log('Section Question Groups:', section.question_groups);
+            
             setParts([{ id: section.id, part: 1, title: `Part 1 (1-${section.question_groups?.reduce((sum, g) => sum + (g.questions?.length || 0), 0) || 0})` }]);
             
             // Get layout type from section
             const sectionLayoutType = parseInt(section.ui_layer) || 1;
+            
+            // Get audio URL from section level
+            const sectionAudioUrl = section.audio_url || null;
             
             // Lấy question groups
             const allGroups = [];
@@ -163,32 +181,44 @@ const ListeningTest = () => {
                 let optionsWithContent = null;
                 const questionType = (group.question_type || '').toLowerCase();
                 
-                switch (questionType) {
-                  case 'multiple_choice':
-                    // Get from metadata.answers
-                    if (group.questions && group.questions.length > 0) {
-                      const firstQuestion = group.questions[0];
-                      if (firstQuestion.metadata) {
-                        const metadata = typeof firstQuestion.metadata === 'string' 
-                          ? JSON.parse(firstQuestion.metadata) 
-                          : firstQuestion.metadata;
-                        
-                        if (metadata.answers && Array.isArray(metadata.answers)) {
-                          options = metadata.answers.map((_, index) => String.fromCharCode(65 + index));
-                          optionsWithContent = metadata.answers.map((answer, index) => {
-                            let content = answer.content || '';
-                            content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
-                            return {
-                              letter: String.fromCharCode(65 + index),
-                              content: content
-                            };
-                          });
+                    switch (questionType) {
+                      case 'multiple_choice':
+                        // Get from question.options (new API format) or metadata.answers (old format)
+                        if (group.questions && group.questions.length > 0) {
+                          const firstQuestion = group.questions[0];
+                          
+                          // Check if options array exists directly on the question
+                          if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
+                            options = firstQuestion.options.map((_, index) => String.fromCharCode(65 + index));
+                            optionsWithContent = firstQuestion.options.map((option, index) => {
+                              let content = option.answer_content || option.content || '';
+                              content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                              return {
+                                letter: String.fromCharCode(65 + index),
+                                content: content
+                              };
+                            });
+                          }
+                          // Fallback to metadata if options not found
+                          else if (firstQuestion.metadata) {
+                            const metadata = typeof firstQuestion.metadata === 'string' 
+                              ? JSON.parse(firstQuestion.metadata) 
+                              : firstQuestion.metadata;
+                            
+                            if (metadata.answers && Array.isArray(metadata.answers)) {
+                              options = metadata.answers.map((_, index) => String.fromCharCode(65 + index));
+                              optionsWithContent = metadata.answers.map((answer, index) => {
+                                let content = answer.answer_content || answer.content || '';
+                                content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                                return {
+                                  letter: String.fromCharCode(65 + index),
+                                  content: content
+                                };
+                              });
+                            }
+                          }
                         }
-                      }
-                    }
-                    break;
-                    
-                  case 'yes_no_not_given':
+                        break;                  case 'yes_no_not_given':
                     options = (group.options && group.options.length > 0) 
                       ? group.options 
                       : ['Yes', 'No', 'Not Given'];
@@ -217,13 +247,36 @@ const ListeningTest = () => {
                   type: group.question_type || 'TRUE_FALSE_NOT_GIVEN',
                   instructions: group.instructions,
                   groupContent: group.content,
-                  audioUrl: group.audio_url,
+                  audioUrl: group.audio_url || sectionAudioUrl, // Use group audio or fall back to section audio
                   options: options,
                   optionsWithContent: optionsWithContent,
                   questions: questions,
                   startNumber: questions[0]?.number || 1,
                   endNumber: questions[questions.length - 1]?.number || 1,
-                  layoutType: sectionLayoutType
+                  layoutType: sectionLayoutType,
+                  // Parse group instruction from content JSON
+                  groupInstruction: (() => {
+                    try {
+                      if (group.content && typeof group.content === 'string') {
+                        const parsed = JSON.parse(group.content);
+                        return parsed.group_instruction || null;
+                      }
+                    } catch (e) {
+                      return null;
+                    }
+                    return null;
+                  })(),
+                  sectionTitle: (() => {
+                    try {
+                      if (group.content && typeof group.content === 'string') {
+                        const parsed = JSON.parse(group.content);
+                        return parsed.section_title || null;
+                      }
+                    } catch (e) {
+                      return null;
+                    }
+                    return null;
+                  })()
                 });
               });
             }
@@ -249,6 +302,9 @@ const ListeningTest = () => {
                 // Get layout type from section
                 const sectionLayoutType = parseInt(section.ui_layer) || 1;
                 
+                // Get audio URL from section level
+                const sectionAudioUrl = section.audio_url || null;
+                
                 // Lấy question groups
                 if (section.question_groups) {
                   section.question_groups.forEach(group => {
@@ -272,10 +328,24 @@ const ListeningTest = () => {
                     
                     switch (questionType) {
                       case 'multiple_choice':
-                        // Get from metadata.answers
+                        // Get from question.options (new API format) or metadata.answers (old format)
                         if (group.questions && group.questions.length > 0) {
                           const firstQuestion = group.questions[0];
-                          if (firstQuestion.metadata) {
+                          
+                          // Check if options array exists directly on the question
+                          if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
+                            options = firstQuestion.options.map((_, index) => String.fromCharCode(65 + index));
+                            optionsWithContent = firstQuestion.options.map((option, index) => {
+                              let content = option.answer_content || option.content || '';
+                              content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                              return {
+                                letter: String.fromCharCode(65 + index),
+                                content: content
+                              };
+                            });
+                          }
+                          // Fallback to metadata if options not found
+                          else if (firstQuestion.metadata) {
                             const metadata = typeof firstQuestion.metadata === 'string' 
                               ? JSON.parse(firstQuestion.metadata) 
                               : firstQuestion.metadata;
@@ -283,7 +353,7 @@ const ListeningTest = () => {
                             if (metadata.answers && Array.isArray(metadata.answers)) {
                               options = metadata.answers.map((_, index) => String.fromCharCode(65 + index));
                               optionsWithContent = metadata.answers.map((answer, index) => {
-                                let content = answer.content || '';
+                                let content = answer.answer_content || answer.content || '';
                                 content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
                                 return {
                                   letter: String.fromCharCode(65 + index),
@@ -324,13 +394,36 @@ const ListeningTest = () => {
                       type: group.question_type || 'TRUE_FALSE_NOT_GIVEN',
                       instructions: group.instructions,
                       groupContent: group.content,
-                      audioUrl: group.audio_url,
+                      audioUrl: group.audio_url || sectionAudioUrl, // Use group audio or fall back to section audio
                       options: options,
                       optionsWithContent: optionsWithContent,
                       questions: questions,
                       startNumber: questions[0]?.number || questionNumber,
                       endNumber: questions[questions.length - 1]?.number || questionNumber,
-                      layoutType: sectionLayoutType
+                      layoutType: sectionLayoutType,
+                      // Parse group instruction from content JSON
+                      groupInstruction: (() => {
+                        try {
+                          if (group.content && typeof group.content === 'string') {
+                            const parsed = JSON.parse(group.content);
+                            return parsed.group_instruction || null;
+                          }
+                        } catch (e) {
+                          return null;
+                        }
+                        return null;
+                      })(),
+                      sectionTitle: (() => {
+                        try {
+                          if (group.content && typeof group.content === 'string') {
+                            const parsed = JSON.parse(group.content);
+                            return parsed.section_title || null;
+                          }
+                        } catch (e) {
+                          return null;
+                        }
+                        return null;
+                      })()
                     });
                   });
                 }
@@ -442,15 +535,21 @@ const ListeningTest = () => {
   }
 
   const currentPartGroups = questionGroups.filter(g => g.part === currentPartTab);
-  const currentPartAudio = currentPartGroups[0]?.audioUrl;
+  const currentPartAudio = currentPartGroups[0]?.audioUrl || sectionData?.audio_url || null;
+  
+  console.log('Current Part Groups:', currentPartGroups);
+  console.log('Current Part Audio URL:', currentPartAudio);
+  console.log('Section Data Audio:', sectionData?.audio_url);
 
   // Render câu hỏi dựa trên loại question type
   const renderQuestionsByType = (group, answers, handleAnswerSelect) => {
     const questionType = (group.type || '').toLowerCase();
 
-    // 1. DẠNG SHORT_TEXT - Điền vào chỗ trống inline (có {{ placeholders }})
+    // 1. DẠNG SHORT_TEXT/SHORT_ANSWER - Điền vào chỗ trống
     const hasPlaceholders = containsInlinePlaceholders(group.groupContent);
-    if (hasPlaceholders || questionType === 'short_text') {
+    
+    if (questionType === 'short_text' || questionType === 'short_answer' || hasPlaceholders) {
+      // Case 1: Has inline placeholders in groupContent
       if (hasPlaceholders) {
         return (
           <div className="listening-test__question-group-with-inputs">
@@ -464,6 +563,7 @@ const ListeningTest = () => {
         );
       }
       
+      // Case 2: Regular short answer questions (one input per question)
       return group.questions.map((question) => (
         <div key={question.id} className="listening-test__question-item listening-test__question-item--input">
           <div className="listening-test__question-row">
@@ -491,31 +591,39 @@ const ListeningTest = () => {
 
     // 2. DẠNG MULTIPLE_CHOICE - Render với optionsWithContent
     if (questionType === 'multiple_choice') {
-      return group.questions.map((question) => (
-        <div key={question.id} className="listening-test__question-item">
-          <div className="listening-test__question-row">
-            <div className="listening-test__question-number">{question.number}</div>
-            <div className="listening-test__question-text" dangerouslySetInnerHTML={{ __html: question.content || '' }} />
+      return group.questions.map((question) => {
+        // Parse question content to extract the actual question text (remove options from content)
+        let questionText = question.content || '';
+        // Remove everything after the first line break or the pattern "A. "
+        const lines = questionText.split('\n');
+        questionText = lines[0]; // Take only the first line as question text
+        
+        return (
+          <div key={question.id} className="listening-test__question-item">
+            <div className="listening-test__question-row">
+              <div className="listening-test__question-number">{question.number}</div>
+              <div className="listening-test__question-text" dangerouslySetInnerHTML={{ __html: questionText }} />
+            </div>
+            <div className="listening-test__options">
+              {(group.optionsWithContent || []).map((option) => (
+                <label key={option.letter} className={`listening-test__option ${answers[question.id] === option.letter ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name={`question-${question.id}`}
+                    value={option.letter}
+                    checked={answers[question.id] === option.letter}
+                    onChange={() => handleAnswerSelect(question.id, option.letter)}
+                  />
+                  <span className="listening-test__option-text">
+                    <strong style={{ marginRight: '8px' }}>{option.letter}.</strong>
+                    <span dangerouslySetInnerHTML={{ __html: option.content }} style={{ display: 'inline' }} />
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
-          <div className="listening-test__options">
-            {(group.optionsWithContent || []).map((option) => (
-              <label key={option.letter} className={`listening-test__option ${answers[question.id] === option.letter ? 'selected' : ''}`}>
-                <input
-                  type="radio"
-                  name={`question-${question.id}`}
-                  value={option.letter}
-                  checked={answers[question.id] === option.letter}
-                  onChange={() => handleAnswerSelect(question.id, option.letter)}
-                />
-                <span className="listening-test__option-text">
-                  <strong style={{ marginRight: '8px' }}>{option.letter}.</strong>
-                  <span dangerouslySetInnerHTML={{ __html: option.content }} style={{ display: 'inline' }} />
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-      ));
+        );
+      });
     }
 
     // 3. DẠNG CÒN LẠI - Render radio buttons với group.options
@@ -608,11 +716,15 @@ const ListeningTest = () => {
                 <div key={group.id} id={`question-group-${group.id}`} className="listening-test__question-group">
                   <div className="listening-test__group-header">
                     <h3>Question {group.startNumber} - {group.endNumber}</h3>
-                    {group.instructions && (
-                      <div 
-                        className="listening-test__group-instructions"
-                        dangerouslySetInnerHTML={{ __html: group.instructions }}
-                      />
+                    {group.groupInstruction && (
+                      <div className="listening-test__group-instructions">
+                        {group.groupInstruction}
+                      </div>
+                    )}
+                    {group.sectionTitle && (
+                      <div className="listening-test__section-title">
+                        {group.sectionTitle}
+                      </div>
                     )}
                   </div>
                   <div className="listening-test__questions-list">
@@ -631,16 +743,20 @@ const ListeningTest = () => {
                 <h2>Listening Part {currentPartTab}</h2> 
                 <div className="listening-test__group-header">
                   <h3>Question {group.startNumber} - {group.endNumber}</h3>
-                  {group.instructions && (
-                    <div 
-                      className="listening-test__group-instructions"
-                      dangerouslySetInnerHTML={{ __html: group.instructions }}
-                    />
+                  {group.groupInstruction && (
+                    <div className="listening-test__group-instructions">
+                      {group.groupInstruction}
+                    </div>
+                  )}
+                  {group.sectionTitle && (
+                    <div className="listening-test__section-title">
+                      {group.sectionTitle}
+                    </div>
                   )}
                 </div>
 
                 {/* Group Content */}
-                {group.groupContent && !containsInlinePlaceholders(group.groupContent) && (
+                {group.groupContent && !containsInlinePlaceholders(group.groupContent) && !isJSONString(group.groupContent) && (
                   <div
                     className="listening-test__group-content"
                     dangerouslySetInnerHTML={{ __html: group.groupContent }}
