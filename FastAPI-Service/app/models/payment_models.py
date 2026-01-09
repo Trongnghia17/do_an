@@ -33,6 +33,25 @@ class UserWallet(Base):
         return f"<UserWallet {self.id}: User {self.user_id} - Balance {self.balance}>"
 
 
+class PaymentPackage(Base):
+    """Payment Packages table - Các gói nạp tiền"""
+    __tablename__ = "payment_packages"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    amount = Column(Integer, nullable=False)  # Số tiền VNĐ (vd: 10000, 50000)
+    owl_amount = Column(Integer, nullable=False)  # Số Trứng Cú cơ bản
+    bonus_owl = Column(Integer, default=0, nullable=False)  # Số Trứng Cú thưởng thêm
+    label = Column(String(100), nullable=True)  # Nhãn hiển thị (vd: "10,000đ")
+    description = Column(Text, nullable=True)  # Mô tả gói
+    is_active = Column(Boolean, default=True, nullable=False)  # Hiển thị hay không
+    display_order = Column(Integer, default=0, nullable=False)  # Thứ tự hiển thị
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<PaymentPackage {self.id}: {self.amount}đ = {self.owl_amount + self.bonus_owl} OWL>"
+
+
 class Payment(Base):
     """Payments table - Lịch sử thanh toán"""
     __tablename__ = "payments"

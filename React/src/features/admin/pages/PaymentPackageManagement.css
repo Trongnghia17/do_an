@@ -1,0 +1,15 @@
+.payment-package-management {
+  padding: 24px;
+}
+
+.payment-package-management .ant-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.payment-package-management .ant-table-cell {
+  vertical-align: middle;
+}
+
+.payment-package-management .ant-btn-link {
+  padding: 4px 8px;
+}

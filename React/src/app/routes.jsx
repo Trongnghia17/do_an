@@ -43,6 +43,7 @@ import AIExamGenerator from '@/features/admin/pages/AIExamGenerator';
 import QuickQuestionGenerator from '@/features/admin/pages/QuickQuestionGenerator';
 import ContentGenerator from '@/features/admin/pages/ContentGenerator';
 import TestQuickGenerator from '@/features/admin/pages/TestQuickGenerator';
+import PaymentPackageManagement from '@/features/admin/pages/PaymentPackageManagement';
 
 const PublicShell = (
   <MainLayout />
@@ -181,6 +182,7 @@ export const router = createBrowserRouter([
           { path: 'skills', element: <SkillManagement /> },
           { path: 'skills/:skillId', element: <SkillDetail /> },
           { path: 'ai-generator', element: <AIExamGenerator /> },
+          { path: 'payment-packages', element: <PaymentPackageManagement /> },
           { path: 'quick-generator', element: <QuickQuestionGenerator /> },
           { path: 'content-generator', element: <ContentGenerator /> },
           { path: 'test-generator', element: <TestQuickGenerator /> },

@@ -104,19 +104,29 @@ async def create_payment(
     """
     Create a new payment request
     """
+    from app.models.payment_models import PaymentPackage
+    
     try:
-        # Validate amount (minimum 10,000 VND)
-        if payment_request.amount < 10000:
+        # Find matching package
+        result = await db.execute(
+            select(PaymentPackage).where(
+                PaymentPackage.amount == payment_request.amount,
+                PaymentPackage.is_active == True
+            )
+        )
+        package = result.scalar_one_or_none()
+        
+        if not package:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Số tiền tối thiểu là 10,000 VNĐ"
+                detail="Gói nạp không hợp lệ"
             )
+        
+        # Calculate total OWL amount (base + bonus)
+        owl_amount = package.owl_amount + package.bonus_owl
         
         # Generate order code
         order_code = generate_order_code()
-        
-        # Calculate OWL amount
-        owl_amount = calculate_owl_amount(payment_request.amount)
         
         # Create payment record
         payment = Payment(
@@ -444,15 +454,26 @@ async def payos_webhook(
 
 
 @router.get("/payment-packages")
-async def get_payment_packages():
+async def get_payment_packages(db: AsyncSession = Depends(get_db)):
     """
     Get available payment packages
     """
+    from app.models.payment_models import PaymentPackage
+    
+    result = await db.execute(
+        select(PaymentPackage)
+        .where(PaymentPackage.is_active == True)
+        .order_by(PaymentPackage.display_order, PaymentPackage.amount)
+    )
+    packages = result.scalars().all()
+    
+    # Return in the format expected by frontend
     return [
-        {"amount": 10000, "owl": 100, "label": "10,000đ", "bonus": 0},
-        {"amount": 50000, "owl": 500, "label": "50,000đ", "bonus": 0},
-        {"amount": 100000, "owl": 1000, "label": "100,000đ", "bonus": 100},
-        {"amount": 200000, "owl": 2000, "label": "200,000đ", "bonus": 200},
-        {"amount": 500000, "owl": 5000, "label": "500,000đ", "bonus": 500},
-        {"amount": 1000000, "owl": 10000, "label": "1,000,000đ", "bonus": 1500},
+        {
+            "amount": pkg.amount,
+            "owl": pkg.owl_amount,
+            "label": pkg.label or f"{pkg.amount:,}đ",
+            "bonus": pkg.bonus_owl
+        }
+        for pkg in packages
     ]
