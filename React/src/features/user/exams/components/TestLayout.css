@@ -264,7 +264,6 @@
 .test-layout__content {
     flex: 1;
     overflow-y: auto;
-    display: flex;
     padding-bottom: 120px;
     /* Space for fixed footer */
 }

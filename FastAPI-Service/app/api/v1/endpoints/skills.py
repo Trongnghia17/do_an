@@ -223,19 +223,55 @@ async def get_skill(
                     
                     questions_data.append(question_dict)
                 
+                # Generate audio URL for this group (inherited from section)
+                group_audio_url = None
+                if section.audio:
+                    if section.audio.startswith(('http://', 'https://')):
+                        group_audio_url = section.audio
+                    else:
+                        from app.config import settings
+                        base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
+                        base_url = base_url.rstrip('/')
+                        
+                        if section.audio.startswith('/'):
+                            group_audio_url = f"{base_url}{section.audio}"
+                        else:
+                            group_audio_url = f"{base_url}/uploads/audio/{section.audio}"
+                
                 # FIXED: Move this append INSIDE the group loop
                 question_groups_data.append({
                     "id": group.id,
                     "name": group.name,
                     "question_type": group.question_type,
                     "content": group.content,
+                    "audio_url": group_audio_url,
                     "questions": questions_data
                 })
+            
+            # Generate audio URL if audio path exists
+            audio_url = None
+            if section.audio:
+                # If it's already a full URL, use it as is
+                if section.audio.startswith(('http://', 'https://')):
+                    audio_url = section.audio
+                else:
+                    # Otherwise, construct full URL
+                    from app.config import settings
+                    base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
+                    base_url = base_url.rstrip('/')
+                    
+                    if section.audio.startswith('/'):
+                        audio_url = f"{base_url}{section.audio}"
+                    else:
+                        audio_url = f"{base_url}/uploads/audio/{section.audio}"
             
             sections_data.append({
                 "id": section.id,
                 "title": section.name,
                 "content": section.content,
+                "ui_layer": section.ui_layer,
+                "audio": section.audio,
+                "audio_url": audio_url,
                 "question_groups": question_groups_data
             })
         

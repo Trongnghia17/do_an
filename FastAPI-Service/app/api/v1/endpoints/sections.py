@@ -123,6 +123,25 @@ async def get_section(
             detail="Section not found"
         )
     
+    # Generate audio URL if audio path exists
+    audio_url = None
+    if section.audio:
+        # If it's already a full URL, use it as is
+        if section.audio.startswith(('http://', 'https://')):
+            audio_url = section.audio
+        else:
+            # Otherwise, construct full URL
+            # Use base URL from config or default to localhost
+            from app.config import settings
+            base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
+            # Remove trailing slash if present
+            base_url = base_url.rstrip('/')
+            
+            if section.audio.startswith('/'):
+                audio_url = f"{base_url}{section.audio}"
+            else:
+                audio_url = f"{base_url}/uploads/audio/{section.audio}"
+    
     response_data = {
         "id": section.id,
         "exam_skill_id": section.exam_skill_id,
@@ -131,6 +150,7 @@ async def get_section(
         "feedback": section.feedback,
         "ui_layer": section.ui_layer,
         "audio": section.audio,
+        "audio_url": audio_url,
         "created_at": section.created_at,
         "updated_at": section.updated_at,
     }
@@ -163,6 +183,7 @@ async def get_section(
                 "name": group.name,
                 "question_type": group.question_type,
                 "content": group.content,
+                "audio_url": audio_url,  # Groups inherit audio from section
                 "questions": questions_data
             })
         

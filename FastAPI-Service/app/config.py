@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     API_VERSION: str = "v1"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+    BASE_URL: str = "http://localhost:8000"  # Base URL for generating full URLs
 
     # MySQL Database (separate from Laravel)
     DB_HOST: str = "127.0.0.1"
