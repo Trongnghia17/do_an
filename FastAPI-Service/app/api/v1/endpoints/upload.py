@@ -13,9 +13,13 @@ router = APIRouter()
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# Audio subdirectory
+AUDIO_DIR = UPLOAD_DIR / "audio"
+AUDIO_DIR.mkdir(exist_ok=True)
+
 # Allowed extensions
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
+ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".webm"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 MAX_AUDIO_SIZE = 50 * 1024 * 1024  # 50MB
 
@@ -92,13 +96,13 @@ async def upload_audio(
     unique_id = str(uuid.uuid4())[:8]
     filename = f"{timestamp}_{unique_id}{file_ext}"
     
-    # Save file
-    file_path = UPLOAD_DIR / filename
+    # Save file in audio subdirectory
+    file_path = AUDIO_DIR / filename
     with open(file_path, "wb") as f:
         f.write(contents)
     
     # Return URL (adjust base_url as needed)
-    file_url = f"/uploads/{filename}"
+    file_url = f"/uploads/audio/{filename}"
     
     return {
         "url": file_url,

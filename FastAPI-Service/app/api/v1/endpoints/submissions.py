@@ -498,17 +498,20 @@ async def get_submission_detail(
                 "question_id": question.id,
                 "question_number": overall_question_number,
                 "part": part_name,
+                "question_content": question.question_text or question.content or "",  # Add question content
                 "user_answer": user_answer.answer_text if user_answer and user_answer.answer_text else "",
+                "answer_audio": user_answer.answer_audio if user_answer and user_answer.answer_audio else None,  # Add audio URL
                 "correct_answer": correct_answer,
                 "is_correct": is_correct,
                 "score": user_answer.score if user_answer else None,
-                "ai_feedback": json.loads(user_answer.ai_feedback) if (user_answer and user_answer.ai_feedback) else None
+                "ai_feedback": json.loads(user_answer.ai_feedback) if (user_answer and user_answer.ai_feedback) else None,
+                "has_ai_grading": bool(user_answer and user_answer.ai_feedback)  # Flag để frontend biết đã có AI grading
             })
             overall_question_number += 1
         
         # Count questions
         total_questions = len(answers_list)
-        answered_questions = sum(1 for ans in answers_list if ans["user_answer"])
+        answered_questions = sum(1 for ans in answers_list if (ans["user_answer"] or ans.get("answer_audio")))
         
         response_data = {
             "id": submission.id,

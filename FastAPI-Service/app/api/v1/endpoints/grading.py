@@ -4,9 +4,11 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+import json
 
 from app.services.chatgpt_service import chatgpt_service
 from app.models.auth_models import User
+from app.models.exam_models import UserExamAnswer
 from app.database import get_db
 from app.auth import get_current_user
 from loguru import logger
@@ -33,15 +35,18 @@ class SpeakingGradingRequest(BaseModel):
 
 
 class GradingResponse(BaseModel):
-    """Response for grading"""
+    """Response for grading with detailed IELTS band descriptors"""
     status: str
     question_id: int
-    overall_score: float
+    overall_band: float  # Changed from overall_score to match IELTS terminology
     criteria_scores: Dict[str, float]
+    criteria_feedback: Optional[Dict[str, str]] = None  # Feedback chi tiết cho từng tiêu chí
     strengths: list
     weaknesses: list
     detailed_feedback: str
     suggestions: list
+    band_justification: Optional[str] = None  # Giải thích tại sao đạt band này
+    pronunciation_note: Optional[str] = None  # Chỉ cho Speaking
 
 
 @router.post("/grade-writing", response_model=GradingResponse)
@@ -74,12 +79,14 @@ async def grade_writing(
         return GradingResponse(
             status="success",
             question_id=request.question_id,
-            overall_score=result.get("overall_score", 0),
+            overall_band=result.get("overall_score", 0),  # Map overall_score to overall_band
             criteria_scores=result.get("criteria_scores", {}),
+            criteria_feedback=result.get("criteria_feedback", {}),
             strengths=result.get("strengths", []),
             weaknesses=result.get("weaknesses", []),
             detailed_feedback=result.get("detailed_feedback", ""),
             suggestions=result.get("suggestions", []),
+            band_justification=result.get("band_justification"),
         )
         
     except Exception as e:
@@ -117,12 +124,15 @@ async def grade_speaking(
         return GradingResponse(
             status="success",
             question_id=request.question_id,
-            overall_score=result.get("overall_score", 0),
+            overall_band=result.get("overall_score", 0),  # Map overall_score to overall_band
             criteria_scores=result.get("criteria_scores", {}),
+            criteria_feedback=result.get("criteria_feedback", {}),
             strengths=result.get("strengths", []),
             weaknesses=result.get("weaknesses", []),
             detailed_feedback=result.get("detailed_feedback", ""),
             suggestions=result.get("suggestions", []),
+            band_justification=result.get("band_justification"),
+            pronunciation_note=result.get("pronunciation_note"),
         )
         
     except Exception as e:
@@ -238,7 +248,7 @@ async def grade_batch(
                 "result": result,
             })
             
-            total_score += result.get("overall_score", 0)
+            total_score += result.get("overall_score", 0)  # Keep as is for internal calculation
         
         return BatchGradingResponse(
             status="success",
@@ -252,4 +262,129 @@ async def grade_batch(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to grade batch: {str(e)}"
+        )
+
+
+class SaveAIGradingRequest(BaseModel):
+    """Request to save AI grading result to database"""
+    submission_id: int
+    question_id: int
+    ai_grading_result: Dict[str, Any]
+
+
+@router.post("/save-ai-grading")
+async def save_ai_grading(
+    request: SaveAIGradingRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Save AI grading result to user_exam_answers.ai_feedback
+    """
+    try:
+        # Find the answer record
+        result = await db.execute(
+            select(UserExamAnswer).where(
+                UserExamAnswer.question_id == request.question_id,
+                UserExamAnswer.submission_id == request.submission_id,
+                UserExamAnswer.deleted_at.is_(None)
+            )
+        )
+        answer = result.scalar_one_or_none()
+        
+        if not answer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Answer not found"
+            )
+        
+        # Save AI grading result as JSON
+        answer.ai_feedback = json.dumps(request.ai_grading_result, ensure_ascii=False)
+        answer.updated_at = datetime.utcnow()
+        
+        await db.commit()
+        await db.refresh(answer)
+        
+        logger.info(f"Saved AI grading for question {request.question_id}, submission {request.submission_id}")
+        
+        return {
+            "status": "success",
+            "message": "AI grading result saved successfully",
+            "answer_id": answer.id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving AI grading: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save AI grading: {str(e)}"
+        )
+
+
+class TranscriptionRequest(BaseModel):
+    """Request for audio transcription"""
+    audio_url: str  # URL to audio file on server
+    language: str = "en"  # Language code
+
+
+class TranscriptionResponse(BaseModel):
+    """Response for audio transcription"""
+    status: str
+    transcript: str
+    audio_url: str
+
+
+@router.post("/transcribe-audio", response_model=TranscriptionResponse)
+async def transcribe_audio(
+    request: TranscriptionRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Transcribe audio file to text using OpenAI Whisper API
+    
+    This endpoint:
+    - Takes audio URL from uploads directory
+    - Uses Whisper API to transcribe audio to text
+    - Returns transcript for AI grading
+    """
+    try:
+        from pathlib import Path
+        
+        # Extract file path from URL
+        # URL format: /uploads/audio/filename.webm
+        audio_path = request.audio_url.lstrip('/')
+        full_path = Path(audio_path)
+        
+        if not full_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Audio file not found: {request.audio_url}"
+            )
+        
+        logger.info(f"Transcribing audio: {request.audio_url}")
+        
+        # Transcribe using Whisper API
+        transcript = await chatgpt_service.transcribe_audio(
+            audio_file_path=str(full_path),
+            language=request.language
+        )
+        
+        logger.info(f"Transcription complete. Length: {len(transcript)} characters")
+        
+        return TranscriptionResponse(
+            status="success",
+            transcript=transcript,
+            audio_url=request.audio_url
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error transcribing audio: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to transcribe audio: {str(e)}"
         )

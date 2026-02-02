@@ -4,22 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Mic, Info } from 'lucide-react';
 
 /**
- * Component for AI-powered Writing grading
+ * Component for AI-powered Speaking grading
  * Có thể tái sử dụng trong existing exam flow
  */
-export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onGraded }) => {
-  const [answer, setAnswer] = useState('');
-  const { gradeWriting, loading, error, result } = useAIGrading();
+export const AISpeakingGrading = ({ question, questionId, examType = 'IELTS', onGraded }) => {
+  const [transcript, setTranscript] = useState('');
+  const { gradeSpeaking, loading, error, result } = useAIGrading();
 
   const handleSubmit = async () => {
     try {
-      const gradingResult = await gradeWriting(
+      const gradingResult = await gradeSpeaking(
         questionId,
         question.content || question.question_text,
-        answer,
+        transcript,
         examType
       );
       
@@ -31,30 +31,45 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
     }
   };
 
-  const wordCount = answer.trim().split(/\s+/).length;
+  const wordCount = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>{question.title || 'Writing Task'}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Mic className="h-5 w-5" />
+            {question.title || 'Speaking Task'}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="prose max-w-none">
-            <p>{question.content || question.question_text}</p>
+            <p className="font-medium">{question.content || question.question_text}</p>
           </div>
+
+          {/* Note about transcript */}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Nhập hoặc dán transcript (văn bản) của câu trả lời Speaking. 
+              Hệ thống AI sẽ đánh giá dựa trên nội dung văn bản.
+            </AlertDescription>
+          </Alert>
 
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-sm font-medium">Your Answer</label>
+              <label className="text-sm font-medium">Transcript của câu trả lời</label>
               <span className="text-sm text-gray-500">Words: {wordCount}</span>
             </div>
             <Textarea
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Write your answer here..."
-              rows={15}
-              className="w-full"
+              value={transcript}
+              onChange={(e) => setTranscript(e.target.value)}
+              placeholder="Paste or type the transcript of your speaking response here...
+
+Example:
+Well, I'd like to talk about a place I recently visited. It was a beautiful beach in Da Nang..."
+              rows={12}
+              className="w-full font-mono text-sm"
               disabled={loading || result}
             />
           </div>
@@ -68,11 +83,11 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
           {!result && (
             <Button
               onClick={handleSubmit}
-              disabled={loading || !answer.trim() || wordCount < 10}
+              disabled={loading || !transcript.trim() || wordCount < 20}
               className="w-full"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? 'AI is grading...' : 'Submit for AI Grading'}
+              {loading ? 'AI đang chấm điểm...' : 'Chấm Điểm Speaking'}
             </Button>
           )}
         </CardContent>
@@ -83,21 +98,21 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
-              Grading Results
+              Kết Quả Chấm Điểm Speaking
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Overall Score */}
-            <div className="text-center p-6 bg-white rounded-lg">
+            <div className="text-center p-6 bg-white rounded-lg shadow-sm">
               <div className="text-5xl font-bold text-blue-600">
                 {result.overall_score.toFixed(1)}
               </div>
-              <div className="text-sm text-gray-600 mt-2">Band Score (out of 9)</div>
+              <div className="text-sm text-gray-600 mt-2">IELTS Band Score (out of 9.0)</div>
             </div>
 
-            {/* Criteria Scores */}
+            {/* Criteria Scores with Feedback */}
             {result.criteria_scores && Object.keys(result.criteria_scores).length > 0 && (
-              <div className="bg-white rounded-lg p-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
                 <h4 className="font-semibold mb-3">📊 Chi Tiết Điểm Theo Tiêu Chí (IELTS Band Descriptors)</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {Object.entries(result.criteria_scores).map(([criterion, score]) => (
@@ -122,17 +137,29 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
               </div>
             )}
 
+            {/* Pronunciation Note - UNIQUE FOR SPEAKING */}
+            {result.pronunciation_note && (
+              <Alert className="bg-amber-50 border-amber-200">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  <strong>🔊 Lưu ý về Pronunciation:</strong>
+                  <br />
+                  {result.pronunciation_note}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Strengths */}
             {result.strengths && result.strengths.length > 0 && (
-              <div className="bg-white rounded-lg p-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
                 <h4 className="font-semibold mb-2 flex items-center gap-2 text-green-700">
                   <CheckCircle2 className="h-4 w-4" />
-                  Strengths
+                  ✅ Điểm Mạnh
                 </h4>
-                <ul className="space-y-1">
+                <ul className="space-y-2">
                   {result.strengths.map((strength, idx) => (
                     <li key={idx} className="text-sm text-gray-700 flex gap-2">
-                      <span>•</span>
+                      <span className="text-green-600 font-bold">•</span>
                       <span>{strength}</span>
                     </li>
                   ))}
@@ -142,15 +169,15 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
 
             {/* Areas for Improvement */}
             {result.weaknesses && result.weaknesses.length > 0 && (
-              <div className="bg-white rounded-lg p-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
                 <h4 className="font-semibold mb-2 flex items-center gap-2 text-orange-700">
                   <XCircle className="h-4 w-4" />
-                  Areas for Improvement
+                  ⚠️ Điểm Cần Cải Thiện
                 </h4>
-                <ul className="space-y-1">
+                <ul className="space-y-2">
                   {result.weaknesses.map((weakness, idx) => (
                     <li key={idx} className="text-sm text-gray-700 flex gap-2">
-                      <span>•</span>
+                      <span className="text-orange-600 font-bold">•</span>
                       <span>{weakness}</span>
                     </li>
                   ))}
@@ -160,9 +187,9 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
 
             {/* Detailed Feedback */}
             {result.detailed_feedback && (
-              <div className="bg-white rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Detailed Feedback</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h4 className="font-semibold mb-2">📖 Nhận Xét Tổng Quan</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                   {result.detailed_feedback}
                 </p>
               </div>
@@ -170,12 +197,12 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
 
             {/* Suggestions */}
             {result.suggestions && result.suggestions.length > 0 && (
-              <div className="bg-white rounded-lg p-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
                 <h4 className="font-semibold mb-2">💡 Gợi Ý Cải Thiện</h4>
-                <ul className="space-y-1">
+                <ul className="space-y-2">
                   {result.suggestions.map((suggestion, idx) => (
                     <li key={idx} className="text-sm text-gray-700 flex gap-2">
-                      <span>{idx + 1}.</span>
+                      <span className="font-semibold text-blue-600">{idx + 1}.</span>
                       <span>{suggestion}</span>
                     </li>
                   ))}
@@ -183,15 +210,27 @@ export const AIWritingGrading = ({ question, questionId, examType = 'IELTS', onG
               </div>
             )}
 
-            {/* Band Justification - NEW */}
+            {/* Band Justification */}
             {result.band_justification && (
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 shadow-sm">
                 <h4 className="font-semibold mb-2 text-blue-900">🎓 Giải Thích Band Score</h4>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                   {result.band_justification}
                 </p>
               </div>
             )}
+
+            {/* Reset Button */}
+            <Button
+              onClick={() => {
+                setTranscript('');
+                window.location.reload();
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              Chấm điểm câu trả lời khác
+            </Button>
           </CardContent>
         </Card>
       )}

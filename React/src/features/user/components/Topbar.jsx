@@ -34,6 +34,9 @@ export default function Topbar() {
 
   const handleProfile = () => { setOpenMenu(false); nav('/trang-ca-nhan'); };
   const handleHistory = () => { setOpenMenu(false); nav('/lich-su-lam-bai'); };
+  const handlePaymentHistory = () => { setOpenMenu(false); nav('/lich-su-thanh-toan'); };
+  const handleTransactionHistory = () => { setOpenMenu(false); nav('/lich-su-giao-dich-owl'); };
+  const handleLoginHistory = () => { setOpenMenu(false); nav('/lich-su-dang-nhap'); };
   const handleLogout = () => { setOpenMenu(false); logout(); nav('/'); };
 
   return (
@@ -99,21 +102,21 @@ export default function Topbar() {
                     <span className="topbar__menu-text">Lịch sử làm bài</span>
                   </button>
 
-                  <button className="topbar__menu-item" onClick={handleHistory}>
+                  <button className="topbar__menu-item" onClick={handlePaymentHistory}>
                     <span className="topbar__menu-icon">
                       <img src={lsthanhtoan} alt="" />
                     </span>
                     <span className="topbar__menu-text">Lịch sử thanh toán</span>
                   </button>
 
-                  <button className="topbar__menu-item" onClick={handleHistory}>
+                  <button className="topbar__menu-item" onClick={handleTransactionHistory}>
                     <span className="topbar__menu-icon">
                       <img src={lsgiaodich} alt="" />
                     </span>
                     <span className="topbar__menu-text">Lịch sử giao dịch OWL</span>
                   </button>
 
-                  <button className="topbar__menu-item" onClick={handleHistory}>
+                  <button className="topbar__menu-item" onClick={handleLoginHistory}>
                     <span className="topbar__menu-icon">
                       <img src={lsdangnhap} alt="" />
                     </span>

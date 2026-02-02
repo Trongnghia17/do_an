@@ -268,28 +268,33 @@ const WritingTest = () => {
                 </span>
               </div>
               
-              <textarea
-                className="writing-test__textarea"
-                placeholder="Start typing your answer here..."
-                value={answers[group.id] || ''}
-                onChange={(e) => handleAnswerChange(group.id, e.target.value)}
-              />
-              
-              <div className="writing-test__word-count-footer">
-                {(() => {
-                  const wordCount = (answers[group.id] || '').trim().split(/\s+/).filter(Boolean).length;
-                  const targetWords = group.part === 1 ? 150 : 250;
-                  return (
-                    <>
-                      <span>{wordCount} từ: </span>
-                      <span className={wordCount < targetWords ? 'text-red' : 'text-green'}>
-                        {wordCount}
-                      </span>
-                      <span>/{targetWords}</span>
-                    </>
-                  );
-                })()}
-              </div>
+              {/* Lưu theo question.id thay vì group.id */}
+              {group.questions && group.questions.length > 0 && (
+                <>
+                  <textarea
+                    className="writing-test__textarea"
+                    placeholder="Start typing your answer here..."
+                    value={answers[group.questions[0].id] || ''}
+                    onChange={(e) => handleAnswerChange(group.questions[0].id, e.target.value)}
+                  />
+                  
+                  <div className="writing-test__word-count-footer">
+                    {(() => {
+                      const wordCount = (answers[group.questions[0].id] || '').trim().split(/\s+/).filter(Boolean).length;
+                      const targetWords = group.part === 1 ? 150 : 250;
+                      return (
+                        <>
+                          <span>{wordCount} từ: </span>
+                          <span className={wordCount < targetWords ? 'text-red' : 'text-green'}>
+                            {wordCount}
+                          </span>
+                          <span>/{targetWords}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ))}

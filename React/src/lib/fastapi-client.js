@@ -105,6 +105,21 @@ export const aiGradingAPI = {
     const response = await apiClient.post('/grading/grade-batch', data);
     return response.data;
   },
+
+  // Lưu AI grading result vào database
+  saveAIGrading: async (data) => {
+    const response = await apiClient.post('/grading/save-ai-grading', data);
+    return response.data;
+  },
+
+  // Transcribe audio to text
+  transcribeAudio: async (audioUrl, language = 'en') => {
+    const response = await apiClient.post('/grading/transcribe-audio', {
+      audio_url: audioUrl,
+      language: language
+    });
+    return response.data;
+  },
 };
 
 // Exam Management API

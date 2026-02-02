@@ -228,6 +228,45 @@ class ChatGPTService:
         
         return result
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+    )
+    async def transcribe_audio(
+        self,
+        audio_file_path: str,
+        language: str = "en",
+    ) -> str:
+        """
+        Transcribe audio file to text using OpenAI Whisper API
+        
+        Args:
+            audio_file_path: Path to audio file (local file path or URL)
+            language: Language code (e.g., 'en' for English)
+            
+        Returns:
+            Transcribed text
+        """
+        try:
+            logger.info(f"Transcribing audio file: {audio_file_path}")
+            
+            # Open audio file
+            with open(audio_file_path, "rb") as audio_file:
+                # Use Whisper API for transcription
+                transcript = await self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language=language,
+                    response_format="text"
+                )
+            
+            logger.info(f"Transcription successful. Length: {len(transcript)} characters")
+            return transcript
+            
+        except Exception as e:
+            logger.error(f"Error transcribing audio: {str(e)}")
+            raise
+
     async def provide_feedback(
         self,
         question: str,
@@ -1039,23 +1078,85 @@ Make sure questions are realistic, relevant, and properly assess English profici
         exam_type: str,
         criteria: Optional[Dict[str, Any]],
     ) -> str:
-        """Build prompt for writing grading"""
+        """Build prompt for writing grading based on IELTS Band Descriptors"""
         
         if exam_type == "IELTS":
-            criteria_text = """
-IELTS Writing Band Descriptors:
-- Task Achievement (25%): How well the task requirements are fulfilled
-- Coherence and Cohesion (25%): Organization and linking of ideas
-- Lexical Resource (25%): Vocabulary range and accuracy
-- Grammatical Range and Accuracy (25%): Grammar structures and accuracy
+            # Detect Task 1 vs Task 2 based on question content
+            is_task_1 = any(keyword in question.lower() for keyword in [
+                'task 1', 'graph', 'chart', 'table', 'diagram', 'process', 'map',
+                'biểu đồ', 'bảng', 'sơ đồ', 'quy trình', 'the chart', 'the graph',
+                'the table', 'the diagram', 'shows', 'illustrates', 'summarize', 'summarise'
+            ])
+            
+            # Task-specific criterion
+            if is_task_1:
+                task_criterion_name = "TASK ACHIEVEMENT (TA)"
+                task_criterion_desc = """1. TASK ACHIEVEMENT (TA) - Dành cho Task 1 (25%):
+   - Band 9.0: Hoàn thành toàn bộ yêu cầu đề bài. Có tổng quan (overview) rõ ràng, thông tin quan trọng được mô tả chi tiết và chính xác
+   - Band 8.0: Đáp ứng đầy đủ các yêu cầu. Tổng quan rõ ràng, các chi tiết quan trọng được làm rõ và trình bày tốt. Dữ liệu được chọn lọc và so sánh hiệu quả
+   - Band 7.0: Nhận xét tổng quan rõ ràng (overview), có làm rõ các chi tiết quan trọng. Thông tin chính xác dù có thể triển khai tốt hơn
+   - Band 6.0: Có phần nhận xét tổng quan, đề cập đầy đủ chi tiết quan trọng. Có chọn lọc thông tin dù chưa hoàn toàn chính xác
+   - Band 5.0: Nhận xét tổng quan chưa rõ ràng. Bài viết chưa đề cập đầy đủ chi tiết hoặc bị chi tiết quá mức (mechanical description)
+   - Band 4.0 trở xuống: Không có overview, diễn đạt sai lệch dữ liệu, ý tưởng hạn chế và không liên quan
+   
+   Lưu ý cho Task 1: Phải có Overview (nhận xét tổng quan), chọn lọc và so sánh dữ liệu quan trọng, không copy nguyên đề bài."""
+                json_key = "task_achievement"
+            else:
+                task_criterion_name = "TASK RESPONSE (TR)"
+                task_criterion_desc = """1. TASK RESPONSE (TR) - Dành cho Task 2 (25%):
+   - Band 9.0: Trả lời đầy đủ tất cả các phần của câu hỏi. Lập luận rõ ràng, được phát triển đầy đủ với ý tưởng sâu sắc và có liên quan
+   - Band 8.0: Trả lời đầy đủ các phần của câu hỏi với lập luận rõ ràng và ý tưởng được phát triển tốt. Ví dụ cụ thể và phù hợp
+   - Band 7.0: Trả lời tất cả các phần của câu hỏi. Có quan điểm rõ ràng và ý tưởng được phát triển khá tốt
+   - Band 6.0: Trả lời được các phần chính của câu hỏi. Quan điểm được nêu, ý tưởng liên quan nhưng phát triển chưa sâu
+   - Band 5.0: Quan điểm chưa rõ ràng. Phần lớn nội dung off-topic hoặc lặp lại. Phát triển ý tưởng hạn chế
+   - Band 4.0 trở xuống: Trả lời lạc đề, quan điểm không rõ, ý tưởng không liên quan hoặc lặp đi lặp lại
+   
+   Lưu ý cho Task 2: Phải trả lời TOÀN BỘ câu hỏi (discuss both views, advantages/disadvantages, agree/disagree...), có quan điểm rõ ràng, ví dụ cụ thể."""
+                json_key = "task_response"
+            
+            criteria_text = f"""
+IELTS Writing Band Descriptors - Tiêu chí chấm điểm chi tiết:
 
-Provide a band score (0-9) and detailed feedback for each criterion.
+{task_criterion_desc}
+
+2. COHERENCE AND COHESION (25%):
+   - Band 9.0: Bố cục thông tin và luận điểm hoàn hảo, đoạn văn mạch lạc, không có lỗi sai
+   - Band 8.0: Bố cục thông tin và lập luận hợp lý, chia đoạn hiệu quả. Sử dụng thuần thục các phương tiện liên kết
+   - Band 7.0: Bố cục thông tin logic, chia đoạn tốt. Phương tiện liên kết đa dạng, một số có thể bị lạm dụng hoặc dùng chưa chuẩn
+   - Band 6.0: Bố cục rõ ràng, chia đoạn hợp lý. Sử dụng phương tiện liên kết hiệu quả. Còn vài lỗi trong việc nối câu
+   - Band 5.0: Bài viết có bố cục nhưng còn hạn chế. Sử dụng từ nối cơ bản, có lỗi gây khó đọc
+   - Band 4.0 trở xuống: Không biết triển khai ý tưởng, sử dụng sai các từ nối
+
+3. LEXICAL RESOURCE (25%):
+   - Band 9.0: Vốn từ vựng phong phú và phù hợp ngữ cảnh. Lỗi sai rất hiếm và không đáng kể
+   - Band 8.0: Vốn từ vựng đa dạng và chính xác. Sử dụng từ học thuật nhuần nhuyễn với rất ít lỗi sai
+   - Band 7.0: Vốn từ vựng đa dạng và khá chính xác. Áp dụng từ học thuật và collocations thành thạo. Thỉnh thoảng mắc lỗi
+   - Band 6.0: Vốn từ tương đối đa dạng. Sử dụng chưa chính xác một số từ học thuật. Có lỗi chính tả và dạng từ nhưng diễn đạt rõ
+   - Band 5.0: Vốn từ hạn chế, mắc lỗi chính tả hoặc dạng từ khá nhiều, gây khó đọc
+   - Band 4.0 trở xuống: Vốn từ vựng cực kỳ hạn chế, nhiều lỗi sai dạng từ và chính tả
+
+4. GRAMMATICAL RANGE AND ACCURACY (25%):
+   - Band 9.0: Sử dụng đa dạng và thuần thục các cấu trúc ngữ pháp. Lỗi sai rất hiếm và không đáng kể
+   - Band 8.0: Sử dụng đa dạng và thuần thục các cấu trúc ngữ pháp. Lỗi sai rất hiếm
+   - Band 7.0: Sử dụng nhiều cấu trúc câu phức tạp. Phần lớn các câu không bị lỗi sai
+   - Band 6.0: Sử dụng các cấu trúc câu đơn giản và phức tạp. Thỉnh thoảng còn mắc lỗi ngữ pháp và lỗi ngắt câu
+   - Band 5.0: Vốn cấu trúc câu hạn chế. Có sử dụng nhưng không thành công một số cấu trúc phức tạp. Nhiều lỗi ngữ pháp
+   - Band 4.0 trở xuống: Chỉ có thể dùng một vài câu đơn hoặc không viết được câu hoàn chỉnh
+
+Yêu cầu chấm điểm:
+- Đánh giá từng tiêu chí theo band descriptors từ 1.0 đến 9.0 (có thể dùng 0.5 như 6.5, 7.5)
+- Điểm tổng = trung bình cộng 4 tiêu chí (làm tròn đến 0.5)
+- Cung cấp feedback chi tiết cho TỪNG tiêu chí
+- Chỉ ra điểm mạnh, điểm yếu cụ thể
+- Đưa ra gợi ý cải thiện thiết thực
 """
         else:
             criteria_text = criteria.get("description", "Standard writing assessment criteria") if criteria else ""
+            json_key = "task_achievement"  # Default for non-IELTS
+            task_criterion_name = "Task Achievement"
 
         prompt = f"""
-Grade the following {exam_type} Writing task:
+You are an experienced IELTS examiner. Grade the following {exam_type} Writing task using the official IELTS Band Descriptors.
 
 Question/Task:
 {question}
@@ -1063,24 +1164,50 @@ Question/Task:
 Student's Answer:
 {answer}
 
+Word count: {len(answer.split())} words
+
 {criteria_text}
 
 Provide your grading in the following JSON format:
 {{
   "overall_score": 7.0,
   "criteria_scores": {{
-    "task_achievement": 7.0,
+    "{json_key}": 7.0,
     "coherence_cohesion": 7.5,
     "lexical_resource": 6.5,
     "grammatical_accuracy": 7.0
   }},
-  "strengths": ["List of strengths"],
-  "weaknesses": ["List of areas for improvement"],
-  "detailed_feedback": "Comprehensive feedback paragraph",
-  "suggestions": ["Specific suggestions for improvement"]
+  "criteria_feedback": {{
+    "{json_key}": "Chi tiết đánh giá {task_criterion_name} theo band descriptors...",
+    "coherence_cohesion": "Chi tiết đánh giá Coherence & Cohesion theo band descriptors...",
+    "lexical_resource": "Chi tiết đánh giá Lexical Resource theo band descriptors...",
+    "grammatical_accuracy": "Chi tiết đánh giá Grammatical Range & Accuracy theo band descriptors..."
+  }},
+  "strengths": [
+    "Điểm mạnh cụ thể 1",
+    "Điểm mạnh cụ thể 2",
+    "Điểm mạnh cụ thể 3"
+  ],
+  "weaknesses": [
+    "Điểm yếu cụ thể 1",
+    "Điểm yếu cụ thể 2",
+    "Điểm yếu cụ thể 3"
+  ],
+  "detailed_feedback": "Tổng hợp đánh giá chung về bài viết, highlight những điểm quan trọng...",
+  "suggestions": [
+    "Gợi ý cải thiện cụ thể 1",
+    "Gợi ý cải thiện cụ thể 2",
+    "Gợi ý cải thiện cụ thể 3"
+  ],
+  "band_justification": "Giải thích tại sao bài viết đạt band này dựa trên 4 tiêu chí..."
 }}
 
-Be fair, constructive, and follow {exam_type} grading standards precisely.
+IMPORTANT:
+- Be objective and fair following official IELTS standards
+- Scores must be from 1.0 to 9.0 (can use 0.5 increments like 6.5, 7.5)
+- Overall score = average of 4 criteria scores, rounded to nearest 0.5
+- Provide specific examples from the student's writing
+- Give constructive, actionable feedback in Vietnamese
 """
         return prompt
 
@@ -1091,29 +1218,164 @@ Be fair, constructive, and follow {exam_type} grading standards precisely.
         exam_type: str,
         criteria: Optional[Dict[str, Any]],
     ) -> str:
-        """Build prompt for speaking grading"""
+        """Build prompt for speaking grading based on IELTS Band Descriptors"""
         
         if exam_type == "IELTS":
             criteria_text = """
-IELTS Speaking Band Descriptors:
-- Fluency and Coherence (25%)
-- Lexical Resource (25%)
-- Grammatical Range and Accuracy (25%)
-- Pronunciation (25%)
+IELTS Speaking Band Descriptors - Tiêu chí chấm điểm CHÍNH THỨC (Official Band Descriptors):
 
-Provide a band score (0-9) and detailed feedback for each criterion.
+Nguồn: www.ielts.org & British Council IELTS Speaking Band Descriptors
+
+1. FLUENCY AND COHERENCE - Độ trôi chảy và mạch lạc (25%):
+
+Band 9: 
+- Nói trôi chảy và hiếm khi lặp lại hay tự điều chỉnh, sửa lỗi
+- Mọi sự do dự, ngập ngừng trong lúc nói đều liên quan đến nội dung, không phải là tìm từ hoặc ngữ pháp
+- Nói mạch lạc, phù hợp với ngữ cảnh, sử dụng các đặc trưng liên kết một cách hoàn toàn thích hợp
+- Phát triển các chủ đề một cách mạch lạc, đầy đủ và hợp lý
+
+Band 8:
+- Nói một cách trôi chảy, hiếm khi lặp lại hoặc tự sửa lỗi
+- Ngập ngừng chủ yếu do tìm nội dung, ý diễn đạt, ít khi phải dừng để tìm từ ngữ hay ngữ pháp
+- Phát triển các chủ đề một cách mạch lạc và phù hợp
+
+Band 7:
+- Có thể kéo dài câu nói mà không cần nỗ lực nhiều
+- Đôi khi có thể thể hiện sự ngập ngừng, một số sự lặp lại và/hoặc tự điều chỉnh, sửa lỗi ở giữa câu nói, liên quan đến việc tìm kiếm ngôn ngữ phù hợp nhưng không ảnh hưởng đến độ mạch lạc
+- Sử dụng nhiều, đa dạng và linh hoạt các phép nối cũng như discourse markers
+
+Band 6:
+- Có khả năng và mong muốn kéo dài câu nói
+- Đôi khi có thể mất độ mạch lạc do thỉnh thoảng lặp lại, tự sửa lỗi hoặc do ngập ngừng
+- Sử dụng nhiều các phép nối và discourse markers nhưng không phải lúc nào cũng thích hợp
+
+Band 5:
+- Thường có thể duy trì được độ trôi chảy của lời nói nhưng phải lặp lại, tự sửa lỗi và/hoặc nói chậm để có thể nói liên tục
+- Thường ngập ngừng để tìm kiếm những từ vựng và ngữ pháp khá căn bản
+- Có thể lạm dụng (sử dụng quá mức) một số từ nối, phép nối và discourse markers
+- Tạo ra được những lời nói đơn giản và lưu loát, nhưng việc truyền đạt các nội dung phức tạp hơn có xu hướng gây ra vấn đề
+
+Band 4:
+- Trong lúc trả lời vẫn có những khoảng dừng đáng chú ý và có thể nói chậm, thường xuyên bị lặp và tự sửa lỗi
+- Liên kết được các câu cơ bản nhưng sử dụng lặp đi lặp lại các phép liên kết đơn giản cũng cùng với những gián đoạn trong độ mạch lạc
+
+2. LEXICAL RESOURCE - Vốn từ vựng (25%):
+
+Band 9:
+- Sử dụng từ vựng một cách linh hoạt và chính xác trong tất cả các chủ đề
+- Sử dụng các thành ngữ một cách tự nhiên và chính xác
+
+Band 8:
+- Sử dụng nguồn từ vựng phong phú và linh hoạt để truyền đạt ý nghĩa một cách chính xác đối với mọi chủ đề
+- Sử dụng các từ vựng ít phổ biến và thành ngữ một cách khéo léo, chỉ đôi khi không chính xác trong cách dùng từ và collocation
+- Sử dụng nhiều cách diễn đạt hiệu quả như được yêu cầu
+
+Band 7:
+- Sử dụng nguồn từ vựng một cách linh hoạt để thảo luận về nhiều chủ đề khác nhau
+- Sử dụng được một số thành ngữ và các từ vựng ít phổ biến hơn, đồng thời cho thấy một số kiến thức về văn phong và cụm từ, tuy nhiên các sự lựa chọn chưa được phù hợp
+- Sử dụng hiệu quả nhiều cách diễn đạt (paraphrase) khác nhau
+
+Band 6:
+- Có vốn từ vựng đủ rộng để có những cuộc thảo luận dài về nhiều chủ đề
+- Sử dụng từ vựng có thể không phù hợp nhưng vẫn thể hiện ý nghĩa rõ ràng
+- Nhìn chung diễn đạt ý được bằng nhiều cách chính xác
+
+Band 5:
+- Có vốn từ vựng đủ rộng để nói được về cả các chủ đề quen thuộc và không quen thuộc nhưng sử dụng từ vựng còn ít linh hoạt
+- Có cố gắng sử dụng nhiều cách để diễn đạt nhưng thường không thành công
+
+Band 4:
+- Có vốn từ vựng đủ rộng về các chủ đề quen thuộc
+- Tuy nhiên chỉ có thể truyền đạt ý nghĩa cơ bản về các chủ đề không quen thuộc và thường xuyên mắc lỗi trong việc lựa chọn từ ngữ
+- Hiếm khi cố gắng thay đổi cách diễn đạt (paraphrase)
+
+3. GRAMMATICAL RANGE AND ACCURACY - Độ đa dạng và chính xác của ngữ pháp (25%):
+
+Band 9:
+- Cấu trúc các câu chính xác và nhất quán, loại trừ các "lỗi nhỏ" trong đặc điểm cách nói của người bản ngữ
+
+Band 8:
+- Sử dụng nhiều và đa dạng các loại cấu trúc một cách linh hoạt
+- Phần lớn các câu không có lỗi, chỉ thỉnh thoảng không phù hợp hoặc mắc các lỗi cơ bản/lỗi ngẫu nhiên
+
+Band 7:
+- Sử dụng nhiều cấu trúc phức tạp một cách khá linh hoạt
+- Các câu được tạo ra thường là không có lỗi
+- Sử dụng hiệu quả cả câu đơn và câu phức
+- Chỉ tồn tại một số lỗi ngữ pháp
+
+Band 6:
+- Sử dụng kết hợp các câu ngắn và phức tạp và đa dạng các cấu trúc nhưng ít linh hoạt
+- Có thể vẫn mắc lỗi thường xuyên với các cấu trúc phức tạp nhưng những lỗi này hiếm khi cản trở quá trình giao tiếp
+
+Band 5:
+- Sử dụng các dạng câu cơ bản một cách hợp lý và chính xác
+- Có sử dụng một số ít các cấu trúc phức tạp hơn, nhưng những cấu trúc này thường có lỗi và có thể phải thay đổi cấu trúc câu
+
+Band 4:
+- Hình thành được các dạng câu cơ bản và một số câu đơn giản đúng
+- Hiếm khi sử dụng các mệnh đề phụ thuộc, nhìn chung, độ dài của các lượt nói ngắn, các cấu trúc lặp lại nhiều lần và thường mắc lỗi
+
+4. PRONUNCIATION - Phát âm (25%):
+
+Band 9:
+- Sử dụng đầy đủ các thành tố phát âm với độ chính xác và sự tinh tế
+- Duy trì việc sử dụng linh hoạt các thành tố này xuyên suốt bài nói
+- Có thể dễ dàng hiểu mà không cần nỗ lực
+- Accent không ảnh hưởng đến tính dễ hiểu của bài nói
+
+Band 8:
+- Sử dụng nhiều và đa dạng các thành tố phát âm với độ chính xác và sự tinh tế
+- Duy trì nhịp điệu phù hợp, sử dụng linh hoạt trọng âm và ngữ điệu trong các câu nói dài, chỉ thỉnh thoảng mắc lỗi
+- Xuyên suốt bài nói dễ hiểu
+- Accent ảnh hưởng rất ít đến tính dễ hiểu của bài nói
+
+Band 7:
+- Thể hiện tất cả các đặc điểm tích cực của Band 6 và một số, nhưng không phải tất cả các đặc điểm tích cực của Band 8
+
+Band 6:
+- Sử dụng được một số các thành tố phát âm nhưng chưa kiểm soát tốt
+- Liên kết các cụm từ một cách phù hợp, nhưng nhịp điệu nói có thể bị ảnh hưởng bởi cách đặt trọng âm và/hoặc tốc độ nói nhanh
+- Sử dụng hiệu quả một số ngữ điệu và trọng âm nhưng điều này không được duy trì xuyên suốt bài nói
+- Nhìn chung bài nói có thể được hiểu xuyên suốt, mặc dù phát âm sai thỉnh thoảng làm giảm độ rõ ràng
+
+Band 5:
+- Thể hiện được tất cả các đặc điểm tích cực của Band 4 và một số, nhưng không phải tất cả các đặc điểm tích cực của Band 6
+
+Band 4:
+- Sử dụng được một số ngữ điệu và trọng âm nhưng khả năng kiểm soát còn hạn chế
+- Liên kết được một số cụm từ nhưng nhịp điệu chung của bài nói có nhiều lỗi
+- Phát âm sai các từ đơn và âm thường xuyên, khiến bài nói thiếu tính rõ ràng
+- Gây ra một số khó khăn cho người nghe, một số đoạn có thể không hiểu được
+
+LƯU Ý QUAN TRỌNG:
+- Vì đánh giá dựa trên transcript (văn bản), pronunciation được đánh giá GIÁN TIẾP qua:
+  * Individual sounds: Đánh giá qua độ chính xác từ vựng và spelling trong transcript
+  * Word/sentence stress: Nhận biết qua cấu trúc câu và discourse markers
+  * Connected speech: Thể hiện qua độ trôi chảy của câu văn
+  * Intonation: Suy luận từ việc sử dụng dấu câu và transition words
+  * Weak sounds: Đánh giá qua natural language flow
+
+Yêu cầu chấm điểm:
+- Đánh giá từng tiêu chí theo Official Band Descriptors từ 1.0 đến 9.0 (có thể dùng 0.5 như 6.5, 7.5)
+- Điểm tổng = trung bình cộng 4 tiêu chí (làm tròn đến 0.5 gần nhất)
+- Cung cấp feedback chi tiết cho TỪNG tiêu chí theo đúng descriptors
+- Chỉ ra điểm mạnh, điểm yếu cụ thể với VÍ DỤ từ bài nói
+- Đưa ra gợi ý cải thiện thiết thực và khả thi
 """
         else:
             criteria_text = criteria.get("description", "Standard speaking assessment criteria") if criteria else ""
 
         prompt = f"""
-Grade the following {exam_type} Speaking response (from transcript):
+You are an experienced IELTS examiner. Grade the following {exam_type} Speaking response using the official IELTS Band Descriptors.
 
 Question:
 {question}
 
 Student's Response (Transcript):
 {transcript}
+
+Word count: {len(transcript.split())} words
 
 {criteria_text}
 
@@ -1126,14 +1388,39 @@ Provide your grading in the following JSON format:
     "grammatical_accuracy": 6.5,
     "pronunciation": 7.0
   }},
-  "strengths": ["List of strengths"],
-  "weaknesses": ["List of areas for improvement"],
-  "detailed_feedback": "Comprehensive feedback paragraph",
-  "suggestions": ["Specific suggestions for improvement"]
+  "criteria_feedback": {{
+    "fluency_coherence": "Chi tiết đánh giá Fluency & Coherence theo band descriptors...",
+    "lexical_resource": "Chi tiết đánh giá Lexical Resource theo band descriptors...",
+    "grammatical_accuracy": "Chi tiết đánh giá Grammatical Range & Accuracy theo band descriptors...",
+    "pronunciation": "Chi tiết đánh giá Pronunciation (gián tiếp qua transcript) theo band descriptors..."
+  }},
+  "strengths": [
+    "Điểm mạnh cụ thể 1",
+    "Điểm mạnh cụ thể 2",
+    "Điểm mạnh cụ thể 3"
+  ],
+  "weaknesses": [
+    "Điểm yếu cụ thể 1",
+    "Điểm yếu cụ thể 2",
+    "Điểm yếu cụ thể 3"
+  ],
+  "detailed_feedback": "Tổng hợp đánh giá chung về câu trả lời, highlight những điểm quan trọng...",
+  "suggestions": [
+    "Gợi ý cải thiện cụ thể 1",
+    "Gợi ý cải thiện cụ thể 2",
+    "Gợi ý cải thiện cụ thể 3"
+  ],
+  "band_justification": "Giải thích tại sao câu trả lời đạt band này dựa trên 4 tiêu chí...",
+  "pronunciation_note": "Lưu ý về việc đánh giá pronunciation qua transcript..."
 }}
 
-Note: Pronunciation is assessed based on grammatical structure and word choice in the transcript.
-Be fair and constructive.
+IMPORTANT:
+- Be objective and fair following official IELTS standards
+- Scores must be from 1.0 to 9.0 (can use 0.5 increments like 6.5, 7.5)
+- Overall score = average of 4 criteria scores, rounded to nearest 0.5
+- For pronunciation, assess based on grammar structure and word choice in transcript
+- Provide specific examples from the student's response
+- Give constructive, actionable feedback in Vietnamese
 """
         return prompt
 

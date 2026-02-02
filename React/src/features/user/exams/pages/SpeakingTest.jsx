@@ -19,7 +19,7 @@ const SpeakingTest = () => {
   const [questionGroups, setQuestionGroups] = useState([]);
   const [parts, setParts] = useState([]);
   const [fontSize, setFontSize] = useState('normal');
-  const [recordings, setRecordings] = useState({});
+  const [recordings, setRecordings] = useState({}); // Store {questionId: {blob, url}}
   const [isRecording, setIsRecording] = useState({});
   const mediaRecorderRef = useRef({});
   const audioChunksRef = useRef({});
@@ -117,7 +117,14 @@ const SpeakingTest = () => {
   const startRecording = async (questionId) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Use webm format as it's widely supported by browsers and now accepted by backend
+      const mediaRecorder = new MediaRecorder(stream, { 
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+          ? 'audio/webm;codecs=opus' 
+          : 'audio/webm'
+      });
+      
       mediaRecorderRef.current[questionId] = mediaRecorder;
       audioChunksRef.current[questionId] = [];
 
@@ -130,7 +137,10 @@ const SpeakingTest = () => {
         const audioUrl = URL.createObjectURL(audioBlob);
         setRecordings(prev => ({
           ...prev,
-          [questionId]: audioUrl
+          [questionId]: {
+            blob: audioBlob,
+            url: audioUrl
+          }
         }));
         stream.getTracks().forEach(track => track.stop());
       };
@@ -156,11 +166,41 @@ const SpeakingTest = () => {
     try {
       setSubmitting(true);
 
-      // Chuẩn bị dữ liệu submit
-      // Với Speaking, answers sẽ chứa đường dẫn file audio hoặc blob data
-      const answersArray = Object.entries(recordings).map(([questionId, audioData]) => ({
+      console.log('Starting submission...');
+      console.log('Recordings:', recordings);
+
+      // Upload audio files first
+      const uploadedAudioUrls = {};
+      
+      for (const [questionId, audioData] of Object.entries(recordings)) {
+        if (audioData && audioData.blob) {
+          try {
+            console.log(`Uploading audio for question ${questionId}...`);
+            
+            // Create File object from Blob
+            const audioFile = new File(
+              [audioData.blob], 
+              `speaking_q${questionId}_${Date.now()}.webm`,
+              { type: 'audio/webm' }
+            );
+            
+            const uploadResponse = await fastapiService.upload.uploadAudio(audioFile);
+            uploadedAudioUrls[questionId] = uploadResponse.data.file_url || uploadResponse.data.audio_url || uploadResponse.data.url;
+            
+            console.log(`Uploaded audio for question ${questionId}:`, uploadedAudioUrls[questionId]);
+          } catch (uploadError) {
+            console.error(`Error uploading audio for question ${questionId}:`, uploadError);
+            message.error(`Không thể upload audio cho câu ${questionId}`);
+          }
+        }
+      }
+
+      console.log('All uploaded audio URLs:', uploadedAudioUrls);
+
+      // Chuẩn bị dữ liệu submit với audio URLs đã upload
+      const answersArray = Object.entries(uploadedAudioUrls).map(([questionId, audioUrl]) => ({
         question_id: parseInt(questionId),
-        answer_audio: audioData // URL hoặc base64 của audio đã upload
+        answer_audio: audioUrl
       }));
 
       // Nếu có text answers thì thêm vào
@@ -168,13 +208,15 @@ const SpeakingTest = () => {
         const existingAnswer = answersArray.find(a => a.question_id === parseInt(questionId));
         if (existingAnswer) {
           existingAnswer.answer_text = answerText;
-        } else {
+        } else if (answerText && answerText.trim()) {
           answersArray.push({
             question_id: parseInt(questionId),
             answer_text: answerText
           });
         }
       });
+
+      console.log('Answers array to submit:', answersArray);
 
       const submitData = {
         exam_skill_id: parseInt(skillId),
@@ -197,7 +239,7 @@ const SpeakingTest = () => {
       
     } catch (error) {
       console.error('Error submitting exam:', error);
-      message.error('Không thể nộp bài. Vui lòng thử lại.');
+      message.error(error.response?.data?.detail || 'Không thể nộp bài. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }
@@ -310,7 +352,7 @@ const SpeakingTest = () => {
                       {/* Recording Audio */}
                       {recordings[question.id] && (
                         <div className="speaking-test__audio-wrapper">
-                          <audio controls src={recordings[question.id]} />
+                          <audio controls src={recordings[question.id].url} />
                         </div>
                       )}
                     </div>
