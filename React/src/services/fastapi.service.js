@@ -123,6 +123,14 @@ export const submissionAPI = {
   getSubmissionDetail: (submissionId) => api.get(`/submissions/submissions/${submissionId}`),
 };
 
+// ========== Payment & Wallet ==========
+export const paymentAPI = {
+  getWallet: () => api.get('/payments/wallet'),
+  getPaymentHistory: () => api.get('/payments/history'),
+  getPackages: () => api.get('/payments/packages'),
+  createPayment: (data) => api.post('/payments/create', data),
+};
+
 // Export all as default
 export default {
   auth: authAPI,
@@ -136,6 +144,7 @@ export default {
   section: sectionAPI,
   group: groupAPI,
   submission: submissionAPI,
+  payment: paymentAPI,
   client: api, // Export raw client for custom requests
 };
 

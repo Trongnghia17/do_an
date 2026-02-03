@@ -93,7 +93,7 @@
 }
 
 .writing-result__score-card--ai {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #045CCE;
   color: white;
 }
 
@@ -570,9 +570,90 @@
   }
 }
 
+/* Original Writing Section */
+.original-writing-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.original-writing-section__header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.original-writing-section__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.original-writing-icon {
+  font-size: 1.75rem;
+}
+
+.original-writing-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.original-writing-task {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.original-writing-task__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.original-writing-task__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #045CCE;
+  margin: 0;
+}
+
+.original-writing-task__word-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.original-writing-task__content {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #374151;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.original-writing-task__content em.text-gray {
+  color: #9ca3af;
+  font-style: italic;
+}
+
 /* Multi-Task Styles */
 .multi-task-overview {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #045CCE;
   color: white;
   padding: 2rem;
   border-radius: 12px;
@@ -702,7 +783,7 @@
 }
 
 .task-tab--active .task-tab__score {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #045CCE;
   color: white;
   box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
@@ -760,8 +841,63 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Task Original Writing (inside each task tab) */
+.task-original-writing {
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.task-original-writing__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #d1d5db;
+}
+
+.task-original-writing__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #045CCE;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.task-original-writing__word-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+}
+
+.task-original-writing__content {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #374151;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.task-original-writing__content em.text-gray {
+  color: #9ca3af;
+  font-style: italic;
+}
+
 .task-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #045CCE;
   color: white;
   padding: 1.5rem 2rem;
   border-radius: 12px;

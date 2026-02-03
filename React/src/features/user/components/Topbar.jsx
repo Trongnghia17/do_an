@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import useAuth from '@/features/user/auth/store/auth.store';
+import fastapiService from '@/services/fastapi.service';
 import logo from "@/assets/images/logo.png";
 import fi_bell from "@/assets/images/fi_bell.svg";
 import Capa_1 from "@/assets/images/Capa_1.svg";
@@ -16,11 +17,29 @@ import './Topbar.css';
 export default function Topbar() {
   const { user, token, logout } = useAuth();
   const nav = useNavigate();
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const handleLogin = () => nav('/login');
 
   const [openMenu, setOpenMenu] = useState(false);
   const menuRef = useRef(null);
+
+  // Fetch wallet balance when user is logged in
+  useEffect(() => {
+    const fetchWallet = async () => {
+      if (token && user) {
+        try {
+          const response = await fastapiService.payment.getWallet();
+          setWalletBalance(response.data?.balance || 0);
+        } catch (error) {
+          console.error('Error fetching wallet:', error);
+          setWalletBalance(0);
+        }
+      }
+    };
+    
+    fetchWallet();
+  }, [token, user]);
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -61,7 +80,7 @@ export default function Topbar() {
           <>
             <button title="Trứng cú" className="topbar__egg" aria-label="egg">
               <img className="topbar__egg-img" src={Capa_1} alt="trứng cú" />
-              150 trứng Cú
+              {walletBalance.toLocaleString()} trứng Cú
             </button>
 
             <button title="Thông báo" className="topbar__icon" aria-label="notifications">

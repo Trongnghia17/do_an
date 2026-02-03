@@ -29,10 +29,50 @@ export default function TestResult() {
           // Check if already has AI grading result
           const hasAIGrading = response.data.data.answers?.some(ans => ans.has_ai_grading && ans.ai_feedback);
           if (hasAIGrading) {
-            // Load existing AI grading result
-            const firstAIGraded = response.data.data.answers.find(ans => ans.has_ai_grading && ans.ai_feedback);
-            if (firstAIGraded) {
-              setAiGradingResult(firstAIGraded.ai_feedback);
+            // Load ALL AI grading results (for multi-task support)
+            const aiGradedAnswers = response.data.data.answers.filter(ans => ans.has_ai_grading && ans.ai_feedback);
+            
+            if (aiGradedAnswers.length === 1) {
+              // Single task - load directly
+              setAiGradingResult(aiGradedAnswers[0].ai_feedback);
+            } else if (aiGradedAnswers.length === 2) {
+              // Multi-task (Task 1 + Task 2) - reconstruct multi-task format
+              const task1Score = parseFloat(aiGradedAnswers[0].ai_feedback.overall_band) || 0;
+              const task2Score = parseFloat(aiGradedAnswers[1].ai_feedback.overall_band) || 0;
+              
+              // IELTS Writing: Task 1 = 1/3, Task 2 = 2/3
+              const weightedScore = (task1Score * (1/3)) + (task2Score * (2/3));
+              const roundedScore = Math.round(weightedScore * 2) / 2;
+              
+              const multiTaskResult = {
+                isMultiTask: true,
+                overall_band: parseFloat(roundedScore.toFixed(1)),
+                tasks: aiGradedAnswers.map((ans, idx) => ({
+                  taskNumber: idx + 1,
+                  result: ans.ai_feedback
+                }))
+              };
+              
+              setAiGradingResult(multiTaskResult);
+            } else if (aiGradedAnswers.length > 2) {
+              // More than 2 tasks - use equal weight
+              const sum = aiGradedAnswers.reduce((acc, ans) => {
+                const score = parseFloat(ans.ai_feedback.overall_band) || 0;
+                return acc + score;
+              }, 0);
+              const avgScore = sum / aiGradedAnswers.length;
+              const roundedScore = Math.round(avgScore * 2) / 2;
+              
+              const multiTaskResult = {
+                isMultiTask: true,
+                overall_band: parseFloat(roundedScore.toFixed(1)),
+                tasks: aiGradedAnswers.map((ans, idx) => ({
+                  taskNumber: idx + 1,
+                  result: ans.ai_feedback
+                }))
+              };
+              
+              setAiGradingResult(multiTaskResult);
             }
           }
         }
@@ -509,7 +549,7 @@ export default function TestResult() {
                     </div>
                     
                     <div className="test-result__ai-score-box" style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: '#045CCE',
                       padding: '2rem',
                       borderRadius: '12px',
                       color: 'white',
@@ -662,7 +702,7 @@ export default function TestResult() {
                         disabled={aiLoading}
                         style={{
                           padding: '1rem 2rem',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background: '#045CCE',
                           color: 'white',
                           border: 'none',
                           borderRadius: '8px',

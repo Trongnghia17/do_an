@@ -4,7 +4,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #045CCE;
   min-height: 100vh;
 }
 
@@ -251,7 +251,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #045CCE;
   color: white;
   border-radius: 12px;
   flex-shrink: 0;

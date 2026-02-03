@@ -8,7 +8,7 @@ import './WritingResultUI.css';
  */
 
 // Helper component để render AI grading cho 1 task
-const TaskAIGradingSection = ({ taskResult, taskNumber }) => {
+const TaskAIGradingSection = ({ taskResult, taskNumber, userAnswer }) => {
   const criterionNames = {
     'task_achievement': 'Task Achievement',
     'task_response': 'Task Response',
@@ -25,14 +25,22 @@ const TaskAIGradingSection = ({ taskResult, taskNumber }) => {
 
   return (
     <div className="task-ai-grading">
-      {taskNumber && (
-        <div className="task-header">
-          <div className="task-header-content">
-            <h4 className="task-title">Task {taskNumber}</h4>
-            <div className="task-score">
-              <span className="task-score-label">Band Score:</span>
-              <span className="task-score-value">{fmt(taskResult.overall_band)}</span>
+   
+
+      {/* User's Original Writing for this Task */}
+      {userAnswer && (
+        <div className="task-original-writing">
+          <div className="task-original-writing__header">
+            <h4 className="task-original-writing__title">
+              <span className="original-writing-icon">📝</span>
+              Bài Viết Của Bạn
+            </h4>
+            <div className="task-original-writing__word-count">
+              {userAnswer ? userAnswer.trim().split(/\s+/).filter(Boolean).length : 0} từ
             </div>
+          </div>
+          <div className="task-original-writing__content">
+            {userAnswer || <em className="text-gray">Chưa có câu trả lời</em>}
           </div>
         </div>
       )}
@@ -50,10 +58,10 @@ const TaskAIGradingSection = ({ taskResult, taskNumber }) => {
                   </div>
                   <div className="criterion-card__score">{Number.isFinite(parseFloat(score)) ? parseFloat(score).toFixed(1) : score}</div>
                 </div>
-                
+
                 {/* Score Bar */}
                 <div className="criterion-card__bar">
-                  <div 
+                  <div
                     className="criterion-card__bar-fill"
                     style={{ width: `${Number.isFinite(parseFloat(score)) ? (Math.max(0, Math.min(100, (parseFloat(score) / 9) * 100))) : 0}%` }}
                   />
@@ -184,10 +192,10 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
               <div className="score-card__label">Điểm Tổng Quan</div>
               <div className="score-card__value">{parseFloat(result.teacher_score).toFixed(1)}</div>
               <div className="score-card__max">/ 9.0 Band</div>
-              
+
               {/* Progress Bar */}
               <div className="score-card__progress">
-                <div 
+                <div
                   className="score-card__progress-bar"
                   style={{ width: `${(result.teacher_score / 9) * 100}%` }}
                 />
@@ -200,14 +208,13 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
           ) : aiGradingResult ? (
             <div className="writing-result__score-card writing-result__score-card--ai">
               <div className="score-card__label">
-                <span className="ai-badge">🤖 AI</span>
                 Điểm Dự Đoán
               </div>
               <div className="score-card__value">{formatBand(aiGradingResult.overall_band)}</div>
               <div className="score-card__max">/ 9.0 Band</div>
-              
+
               <div className="score-card__progress">
-                <div 
+                <div
                   className="score-card__progress-bar score-card__progress-bar--ai"
                   style={{ width: `${bandToPercent(aiGradingResult.overall_band)}%` }}
                 />
@@ -221,9 +228,9 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
             <div className="writing-result__score-card writing-result__score-card--pending">
               <div className="score-card__icon">⏳</div>
               <div className="score-card__pending-text">Đang chờ chấm điểm</div>
-              
+
               {/* AI Grading Button */}
-              <button 
+              <button
                 className="btn-ai-grading"
                 onClick={onAIGrading}
                 disabled={aiLoading}
@@ -235,7 +242,6 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
                   </>
                 ) : (
                   <>
-                    <span className="ai-icon">🤖</span>
                     Chấm Điểm AI Ngay
                   </>
                 )}
@@ -293,7 +299,6 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
             <div className="ai-grading-results">
               <div className="ai-results__header">
                 <h3 className="ai-results__title">
-                  <span className="ai-badge-large">🤖</span>
                   Phân Tích Chi Tiết Từ AI
                 </h3>
                 <p className="ai-results__subtitle">
@@ -305,32 +310,17 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
               {aiGradingResult.isMultiTask ? (
                 <>
                   {/* Overall Score for Multi-Task */}
-                  <div className="multi-task-overview">
-                    <div className="multi-task-overview__score">
-                      <span className="label">Writing Overall Band</span>
-                      <span className="value">{formatBand(aiGradingResult.overall_band)}</span>
-                      <span className="max">/ 9.0</span>
-                    </div>
-                    <p className="multi-task-overview__note">
-                      {aiGradingResult.tasks.length === 2 
-                        ? 'Task 1 (1/3) + Task 2 (2/3)'
-                        : `Điểm tổng kết từ ${aiGradingResult.tasks.length} tasks`
-                      }
-                    </p>
-                    <p className="multi-task-overview__instruction">
-                      👇 Click vào mỗi tab bên dưới để xem chi tiết điểm và nhận xét riêng của từng Task
-                    </p>
-                  </div>
+
 
                   {/* Task Tabs */}
                   <div className="task-tabs">
                     <div className="task-tabs__header">
                       {aiGradingResult.tasks.map((task, idx) => {
                         // IELTS Writing weight: Task 1 = 1/3, Task 2 = 2/3
-                        const weight = aiGradingResult.tasks.length === 2 
+                        const weight = aiGradingResult.tasks.length === 2
                           ? (idx === 0 ? '33%' : '67%')
                           : `${Math.round(100 / aiGradingResult.tasks.length)}%`;
-                        
+
                         return (
                           <button
                             key={idx}
@@ -349,9 +339,10 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
 
                     <div className="task-tabs__content">
                       {aiGradingResult.tasks[activeTab] && (
-                        <TaskAIGradingSection 
+                        <TaskAIGradingSection
                           taskResult={aiGradingResult.tasks[activeTab].result}
                           taskNumber={aiGradingResult.tasks[activeTab].taskNumber}
+                          userAnswer={result?.answers?.[activeTab]?.user_answer}
                         />
                       )}
                     </div>
@@ -359,7 +350,7 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
                 </>
               ) : (
                 /* Single Task Display */
-                <TaskAIGradingSection 
+                <TaskAIGradingSection
                   taskResult={aiGradingResult}
                   taskNumber={null}
                 />
@@ -373,7 +364,7 @@ const WritingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =>
               <div className="empty-state__icon">📋</div>
               <h3 className="empty-state__title">Đang Chờ Chấm Điểm</h3>
               <p className="empty-state__text">
-                Bài viết của bạn đang được giáo viên xem xét. 
+                Bài viết của bạn đang được giáo viên xem xét.
                 Bạn có thể sử dụng chức năng AI để nhận kết quả sơ bộ ngay lập tức.
               </p>
             </div>
