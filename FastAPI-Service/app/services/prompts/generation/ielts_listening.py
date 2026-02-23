@@ -26,6 +26,8 @@ def get_listening_question_type_instructions():
    - content: Full question with A, B, C options
    - answers: Array of 3-4 answer objects with answer_content, is_correct, feedback
    - correct_answer: The correct option text
+   - explanation: Detailed explanation (50-100 words) why this answer is correct and why other options are wrong
+   - locate: Reference to the specific part of audio script where the answer is mentioned (e.g., "Speaker 1: 'The meeting is at 3pm'", "Line 15-17 of transcript")
    - Example: "What is the main reason for the delay?\\nA. Bad weather\\nB. Technical problems\\nC. Staff shortage\"""",
         
         "short_text": """**Short Text (Short Answer)**
@@ -33,6 +35,8 @@ def get_listening_question_type_instructions():
    - instruction: "Answer the questions below.\\nWrite NO MORE THAN THREE WORDS AND/OR A NUMBER for each answer."
    - content: Direct question
    - correct_answer: Brief answer from audio (1-3 words or number)
+   - explanation: Detailed explanation (30-50 words) of why this answer is correct and how it's mentioned in the audio
+   - locate: Reference to the specific part of audio script (e.g., "Receptionist says: 'The tour starts at 10 a.m.'")
    - Example: "What time does the tour start?" → Answer: "10 a.m." or "10:00\"""",
         
         "yes_no_not_given": """**Yes/No/Not Given**
@@ -40,6 +44,8 @@ def get_listening_question_type_instructions():
    - instruction: "Do the following statements agree with the views/claims of the speaker?\\n\\nWrite:\\nYES if the statement agrees with the speaker's views\\nNO if the statement contradicts the speaker's views\\nNOT GIVEN if it is impossible to say what the speaker thinks about this"
    - content: Statement to evaluate
    - correct_answer: Must be exactly "YES", "NO", or "NOT GIVEN"
+   - explanation: Detailed explanation (50-80 words) explaining why this is YES/NO/NOT GIVEN based on speaker's views
+   - locate: Reference to audio script where speaker expresses their view (or explain why it's NOT GIVEN)
    - Example: "The speaker believes technology improves education." → Answer: "YES\"""",
         
         "true_false_not_given": """**True/False/Not Given**
@@ -47,6 +53,8 @@ def get_listening_question_type_instructions():
    - instruction: "Do the following statements agree with the information in the audio?\\n\\nWrite:\\nTRUE if the statement agrees with the information\\nFALSE if it contradicts the information\\nNOT GIVEN if there is no information on this"
    - content: Statement to evaluate
    - correct_answer: Must be exactly "TRUE", "FALSE", or "NOT GIVEN"
+   - explanation: Detailed explanation (50-80 words) explaining why this is TRUE/FALSE/NOT GIVEN based on audio information
+   - locate: Reference to audio script that proves the answer (or explain why it's NOT GIVEN)
    - Example: "The conference will last for two days." → Answer: "TRUE\""""
     }
 
@@ -187,7 +195,8 @@ Return ONLY a valid JSON object with this structure:
                 }}
               ],
               "correct_answer": "The correct answer",
-              "explanation": "Brief explanation",
+              "explanation": "Detailed explanation (50-100 words for multiple choice, 30-50 words for others) explaining why this answer is correct, referencing the audio script",
+              "locate": "Reference to audio script location (e.g., 'Speaker 1: specific quote', 'Lines 10-12 of transcript')",
               "points": 1.0
             }}
           ]
@@ -206,9 +215,24 @@ Return ONLY a valid JSON object with this structure:
 6. Make audio scripts natural and conversational
 7. All answers must be directly from the audio script
 8. For multiple choice: provide "answers" array with 3-4 options
-9. Return ONLY valid JSON, no markdown formatting
+9. **INCLUDE "explanation" AND "locate" FOR EVERY QUESTION**:
+   - explanation: Comprehensive (50-100 words for multiple choice, 30-50 words for others), teaching why the answer is correct
+   - locate: Specific reference to audio script showing where the answer is mentioned
+10. For NOT GIVEN answers: Explain what information is missing from the audio
+11. Return ONLY valid JSON, no markdown formatting
 
-Generate realistic, test-worthy content now!
+**EXPLANATION AND LOCATE GUIDELINES:**
+- **explanation**: Must be educational and comprehensive
+  * Explain WHY the answer is correct
+  * Reference what was said in the audio
+  * For TRUE/FALSE/NOT GIVEN: Teach how to distinguish between FALSE and NOT GIVEN
+  
+- **locate**: Must pinpoint the exact location in audio script
+  * Format: "Speaker name: 'exact quote'" or "Lines X-Y of transcript"
+  * For NOT GIVEN: Explain what information is absent
+  * Make it easy to verify by listening to that specific part
+
+Generate realistic, test-worthy content with comprehensive explanations now!
 """
     
     return prompt

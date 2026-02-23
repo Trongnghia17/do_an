@@ -3,11 +3,189 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getTestResult } from '../api/exams.api';
 import { useAIGrading } from '@/hooks/useAIGrading';
 import { aiGradingAPI } from '@/lib/fastapi-client';
+import { Modal } from 'antd';
 import WritingResultUI from '../components/WritingResultUI';
 import SpeakingResultUI from '../components/SpeakingResultUI';
 import logo from '@/assets/images/logo.png';
 import mascotImage from '@/assets/images/cuchucmung.png';
 import './TestResult.css';
+import './TestResultReview.css';
+
+// Component Modal hiển thị giải thích chi tiết
+const ExplanationModal = ({ visible, onClose, answer }) => {
+  if (!answer) return null;
+
+  const isCorrect = answer.is_correct;
+  const userAnswer = answer.user_answer || '';
+  const correctAnswer = answer.correct_answer || '';
+  const questionNumber = answer.question_number;
+  const questionContent = answer.question_content || answer.question_text || '';
+  
+  // Parse metadata to get explanation
+  let explanation = '';
+  let locateText = '';
+  
+  if (answer.metadata) {
+    try {
+      const metadata = typeof answer.metadata === 'string' ? JSON.parse(answer.metadata) : answer.metadata;
+      
+      // Get feedback from metadata.answers array
+      if (metadata.answers && Array.isArray(metadata.answers)) {
+        const correctAnswerObj = metadata.answers.find(a => a.is_correct === "1" || a.is_correct === 1 || a.is_correct === true);
+        if (correctAnswerObj && correctAnswerObj.feedback) {
+          explanation = correctAnswerObj.feedback;
+        }
+      }
+      
+      // Fallback to other fields
+      explanation = explanation || metadata.explanation || metadata.feedback || answer.feedback || '';
+      locateText = metadata.locate || metadata.hint || answer.hint || '';
+    } catch (e) {
+      console.error('Error parsing metadata:', e);
+    }
+  }
+
+  const isUnanswered = !userAnswer || userAnswer.trim() === '';
+
+  return (
+    <Modal
+      title={
+        <div style={{ 
+          borderBottom: '1px solid #E7E7E7', 
+          paddingBottom: '16px',
+          marginBottom: '16px'
+        }}>
+          <div style={{ 
+            fontSize: '18px', 
+            fontWeight: 600, 
+            color: '#1F2937',
+            marginBottom: '8px'
+          }}>
+            Giải thích chi tiết - Câu {questionNumber}
+          </div>
+          <div style={{ 
+            fontSize: '14px', 
+            color: '#6B7280',
+            fontWeight: 400
+          }}>
+            Xem phân tích chi tiết về câu hỏi và đáp án
+          </div>
+        </div>
+      }
+      open={visible}
+      onCancel={onClose}
+      footer={null}
+      width={700}
+      centered
+      className="explanation-modal"
+    >
+      <div className="explanation-modal-content">
+        {/* Câu hỏi */}
+        {questionContent && (
+          <div className="explanation-section">
+            <div className="explanation-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#045CCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 16V12M12 8H12.01" stroke="#045CCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Câu hỏi
+            </div>
+            <div 
+              className="explanation-section-content"
+              dangerouslySetInnerHTML={{ __html: questionContent }}
+            />
+          </div>
+        )}
+
+        {/* Đáp án của bạn */}
+        <div className="explanation-section">
+          <div className="explanation-section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke={isCorrect ? "#35A815" : isUnanswered ? "#F59E0B" : "#EF4444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Đáp án của bạn
+          </div>
+          <div className="explanation-section-content">
+            <span className={`explanation-answer-badge ${isCorrect ? 'correct' : isUnanswered ? 'unanswered' : 'incorrect'}`}>
+              {userAnswer || <em>(Chưa trả lời)</em>}
+            </span>
+            {isCorrect ? (
+              <span className="explanation-status-text correct">✓ Chính xác</span>
+            ) : isUnanswered ? (
+              <span className="explanation-status-text unanswered">⊘ Chưa trả lời</span>
+            ) : (
+              <span className="explanation-status-text incorrect">✗ Chưa chính xác</span>
+            )}
+          </div>
+        </div>
+
+        {/* Đáp án đúng */}
+        {!isCorrect && correctAnswer && (
+          <div className="explanation-section">
+            <div className="explanation-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#35A815" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Đáp án đúng
+            </div>
+            <div className="explanation-section-content">
+              <span className="explanation-answer-badge correct">
+                {correctAnswer}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Giải thích */}
+        {explanation && (
+          <div className="explanation-section">
+            <div className="explanation-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 6.25278V19.2528M12 6.25278C10.8321 5.47686 9.24649 5 7.5 5C5.75351 5 4.16789 5.47686 3 6.25278V19.2528C4.16789 18.4769 5.75351 18 7.5 18C9.24649 18 10.8321 18.4769 12 19.2528M12 6.25278C13.1679 5.47686 14.7535 5 16.5 5C18.2465 5 19.8321 5.47686 21 6.25278V19.2528C19.8321 18.4769 18.2465 18 16.5 18C14.7535 18 13.1679 18.4769 12 19.2528" stroke="#045CCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Giải thích
+            </div>
+            <div 
+              className="explanation-section-content explanation-text"
+              dangerouslySetInnerHTML={{ __html: explanation }}
+            />
+          </div>
+        )}
+
+        {/* Locate hint */}
+        {locateText && (
+          <div className="explanation-section">
+            <div className="explanation-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#045CCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Vị trí trong bài đọc
+            </div>
+            <div className="explanation-section-content">
+              <div className="explanation-locate-text">
+                {locateText}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Nếu không có giải thích */}
+        {!explanation && !locateText && (
+          <div className="explanation-section" style={{ background: '#FEF3C7', borderColor: '#FDE68A' }}>
+            <div className="explanation-section-content" style={{ color: '#92400E', textAlign: 'center' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 12px', display: 'block' }}>
+                <path d="M13 16H12V12H11M12 8H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <p style={{ margin: 0, fontSize: '14px' }}>
+                Câu hỏi này chưa có giải thích chi tiết từ hệ thống.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
 
 export default function TestResult() {
   const { resultId } = useParams();
@@ -18,6 +196,10 @@ export default function TestResult() {
   const [aiGradingResult, setAiGradingResult] = useState(null);
   const [showAIGrading, setShowAIGrading] = useState(false);
   const { gradeWriting, gradeSpeaking, loading: aiLoading, error: aiError } = useAIGrading();
+  
+  // Modal state for explanation
+  const [explanationModalVisible, setExplanationModalVisible] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
 
   useEffect(() => {
     const fetchResult = async () => {
@@ -376,6 +558,16 @@ export default function TestResult() {
       alert('Có lỗi khi chấm điểm bằng AI. Vui lòng thử lại.');
       setShowAIGrading(false);
     }
+  };
+
+  const showExplanationModal = (answer) => {
+    setSelectedAnswer(answer);
+    setExplanationModalVisible(true);
+  };
+
+  const closeExplanationModal = () => {
+    setExplanationModalVisible(false);
+    setSelectedAnswer(null);
   };
 
   return (
@@ -756,13 +948,21 @@ export default function TestResult() {
                 behavior: 'smooth' 
               });
             }}>
-              Giải thích chi tiết
+              Xem danh sách câu trả lời
             </button>
           </div>
         </div>
 
         {/* Answers Section */}
         <div className="test-result__answers-section">
+          <div className="test-result__answers-header">
+            <h3>Danh sách câu trả lời</h3>
+            <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+              Click vào icon <svg xmlns="http://www.w3.org/2000/svg" width="16" height="17" viewBox="0 0 16 17" fill="none" style={{ verticalAlign: 'middle', display: 'inline' }}>
+                <path d="M4.16667 6.66667H5C5.22101 6.66667 5.43297 6.57887 5.58926 6.42259C5.74554 6.26631 5.83333 6.05435 5.83333 5.83333C5.83333 5.61232 5.74554 5.40036 5.58926 5.24408C5.43297 5.0878 5.22101 5 5 5H4.16667C3.94565 5 3.73369 5.0878 3.57741 5.24408C3.42113 5.40036 3.33333 5.61232 3.33333 5.83333C3.33333 6.05435 3.42113 6.26631 3.57741 6.42259C3.73369 6.57887 3.94565 6.66667 4.16667 6.66667ZM7.5 11.6667H4.16667C3.94565 11.6667 3.73369 11.7545 3.57741 11.9107C3.42113 12.067 3.33333 12.279 3.33333 12.5C3.33333 12.721 3.42113 12.933 3.57741 13.0893C3.73369 13.2455 3.94565 13.3333 4.16667 13.3333H7.5C7.72101 13.3333 7.93297 13.2455 8.08926 13.0893C8.24554 12.933 8.33333 12.721 8.33333 12.5C8.33333 12.279 8.24554 12.067 8.08926 11.9107C7.93297 11.7545 7.72101 11.6667 7.5 11.6667ZM7.5 8.33333H4.16667C3.94565 8.33333 3.73369 8.42113 3.57741 8.57741C3.42113 8.73369 3.33333 8.94565 3.33333 9.16667C3.33333 9.38768 3.42113 9.59964 3.57741 9.75592C3.73369 9.9122 3.94565 10 4.16667 10H7.5C7.72101 10 7.93297 9.9122 8.08926 9.75592C8.24554 9.59964 8.33333 9.38768 8.33333 9.16667C8.33333 8.94565 8.24554 8.73369 8.08926 8.57741C7.93297 8.42113 7.72101 8.33333 7.5 8.33333Z" fill="#045CCE"/>
+              </svg> bên cạnh mỗi câu để xem giải thích chi tiết
+            </p>
+          </div>
           {Object.entries(answersByPart).map(([partName, answers]) => (
             <div key={partName} className="test-result__part">
               <h3 className="test-result__part-title">{partName}</h3>
@@ -787,6 +987,17 @@ export default function TestResult() {
                             <> | Đáp án: <span className="test-result__answer-value">{answer.correct_answer || 'N/A'}</span></>
                           )}
                         </div>
+                        
+                        {/* Button to open explanation modal */}
+                        <button 
+                          className="test-result__explain-btn"
+                          onClick={() => showExplanationModal(answer)}
+                          title="Xem giải thích chi tiết"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="17" viewBox="0 0 16 17" fill="none">
+                            <path d="M4.16667 6.66667H5C5.22101 6.66667 5.43297 6.57887 5.58926 6.42259C5.74554 6.26631 5.83333 6.05435 5.83333 5.83333C5.83333 5.61232 5.74554 5.40036 5.58926 5.24408C5.43297 5.0878 5.22101 5 5 5H4.16667C3.94565 5 3.73369 5.0878 3.57741 5.24408C3.42113 5.40036 3.33333 5.61232 3.33333 5.83333C3.33333 6.05435 3.42113 6.26631 3.57741 6.42259C3.73369 6.57887 3.94565 6.66667 4.16667 6.66667ZM7.5 11.6667H4.16667C3.94565 11.6667 3.73369 11.7545 3.57741 11.9107C3.42113 12.067 3.33333 12.279 3.33333 12.5C3.33333 12.721 3.42113 12.933 3.57741 13.0893C3.73369 13.2455 3.94565 13.3333 4.16667 13.3333H7.5C7.72101 13.3333 7.93297 13.2455 8.08926 13.0893C8.24554 12.933 8.33333 12.721 8.33333 12.5C8.33333 12.279 8.24554 12.067 8.08926 11.9107C7.93297 11.7545 7.72101 11.6667 7.5 11.6667ZM7.5 8.33333H4.16667C3.94565 8.33333 3.73369 8.42113 3.57741 8.57741C3.42113 8.73369 3.33333 8.94565 3.33333 9.16667C3.33333 9.38768 3.42113 9.59964 3.57741 9.75592C3.73369 9.9122 3.94565 10 4.16667 10H7.5C7.72101 10 7.93297 9.9122 8.08926 9.75592C8.24554 9.59964 8.33333 9.38768 8.33333 9.16667C8.33333 8.94565 8.24554 8.73369 8.08926 8.57741C7.93297 8.42113 7.72101 8.33333 7.5 8.33333ZM13.2667 6.15C13.3305 5.99824 13.3479 5.83098 13.3168 5.66932C13.2856 5.50766 13.2073 5.35885 13.0917 5.24167L8.09167 0.241667C8.02278 0.176847 7.94402 0.123401 7.85833 0.0833333C7.83346 0.0798001 7.80821 0.0798001 7.78333 0.0833333L7.55 0H2.5C1.83696 0 1.20107 0.263392 0.732233 0.732233C0.263392 1.20107 0 1.83696 0 2.5V14.1667C0 14.8297 0.263392 15.4656 0.732233 15.9344C1.20107 16.4033 1.83696 16.6667 2.5 16.6667H7.5C7.72101 16.6667 7.93297 16.5789 8.08926 16.4226C8.24554 16.2663 8.33333 16.0543 8.33333 15.8333C8.33333 15.6123 8.24554 15.4004 8.08926 15.2441C7.93297 15.0878 7.72101 15 7.5 15H2.5C2.27899 15 2.06702 14.9122 1.91074 14.7559C1.75446 14.5996 1.66667 14.3877 1.66667 14.1667V2.5C1.66667 2.27899 1.75446 2.06702 1.91074 1.91074C2.06702 1.75446 2.27899 1.66667 2.5 1.66667H6.66667V4.16667C6.66667 4.82971 6.93006 5.46559 7.3989 5.93443C7.86774 6.40327 8.50362 6.66667 9.16667 6.66667H12.5C12.6645 6.66585 12.8251 6.61634 12.9616 6.5244C13.098 6.43245 13.2041 6.30218 13.2667 6.15ZM9.16667 5C8.94565 5 8.73369 4.9122 8.57741 4.75592C8.42113 4.59964 8.33333 4.38768 8.33333 4.16667V2.84167L10.4917 5H9.16667ZM15 8.33333H10.8333C10.6123 8.33333 10.4004 8.42113 10.2441 8.57741C10.0878 8.73369 10 8.94565 10 9.16667V15.8333C10.0004 15.9841 10.0417 16.1319 10.1195 16.261C10.1972 16.3902 10.3086 16.4958 10.4417 16.5667C10.572 16.6336 10.7176 16.665 10.8639 16.6576C11.0102 16.6503 11.152 16.6046 11.275 16.525L12.9167 15.4417L14.5833 16.525C14.7078 16.597 14.8488 16.6356 14.9926 16.6369C15.1364 16.6383 15.2782 16.6024 15.404 16.5328C15.5298 16.4631 15.6355 16.3621 15.7107 16.2396C15.786 16.117 15.8282 15.9771 15.8333 15.8333V9.16667C15.8333 8.94565 15.7455 8.73369 15.5893 8.57741C15.433 8.42113 15.221 8.33333 15 8.33333ZM14.1667 14.2667L13.3833 13.7417C13.2455 13.6485 13.083 13.5987 12.9167 13.5987C12.7503 13.5987 12.5878 13.6485 12.45 13.7417L11.6667 14.2667V10H14.1667V14.2667Z" fill="#045CCE"/>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   );
@@ -798,6 +1009,13 @@ export default function TestResult() {
       </div>
         </div>
       )}
+      
+      {/* Explanation Modal */}
+      <ExplanationModal
+        visible={explanationModalVisible}
+        onClose={closeExplanationModal}
+        answer={selectedAnswer}
+      />
     </>
   );
 }

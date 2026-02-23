@@ -5,11 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b28cf914-2307-40b3-b657-3544debb399a" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/React/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/React/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/React/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/components/Topbar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/components/Topbar.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.css" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/OnlineExamLibrary.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/generation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/submissions.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/submissions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/chatgpt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/chatgpt_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_listening.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_listening.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_reading.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_reading.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.css" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,20 +39,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/dell/nova/luyende&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "/home/dell/nova/quanlybanhang",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -74,6 +77,8 @@
       <workItem from="1765459301653" duration="2902000" />
       <workItem from="1765794004907" duration="15000" />
       <workItem from="1767978839270" duration="4475000" />
+      <workItem from="1770144579433" duration="691000" />
+      <workItem from="1770621946465" duration="477000" />
     </task>
     <servers />
   </component>

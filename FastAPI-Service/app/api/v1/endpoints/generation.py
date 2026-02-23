@@ -224,7 +224,18 @@ async def generate_complete_exam(
                             
                             # Listening questions may have answers array
                             if q.get("answers"):
-                                options_json = json.dumps(q.get("answers"), ensure_ascii=False)
+                                answers_data = q.get("answers")
+                                # If there's a locate field, store it with the answers
+                                if q.get("locate"):
+                                    options_json = json.dumps({
+                                        "answers": answers_data,
+                                        "locate": q.get("locate")
+                                    }, ensure_ascii=False)
+                                else:
+                                    options_json = json.dumps(answers_data, ensure_ascii=False)
+                            # Store locate even if no answers array
+                            elif q.get("locate"):
+                                options_json = json.dumps({"locate": q.get("locate")}, ensure_ascii=False)
                             
                             question = ExamQuestion(
                                 question_group_id=group.id,
@@ -264,10 +275,18 @@ async def generate_complete_exam(
                         
                         # Check for new format: answers array (multiple_choice with is_correct, feedback)
                         if q.get("answers"):
-                            options_json = json.dumps(q.get("answers"))
+                            answers_data = q.get("answers")
+                            # If there's a locate field, store it with the answers
+                            if q.get("locate"):
+                                options_json = json.dumps({
+                                    "answers": answers_data,
+                                    "locate": q.get("locate")
+                                }, ensure_ascii=False)
+                            else:
+                                options_json = json.dumps(answers_data, ensure_ascii=False)
                         # Fallback: old format with simple options array
                         elif q.get("options"):
-                            options_json = json.dumps(q.get("options"))
+                            options_json = json.dumps(q.get("options"), ensure_ascii=False)
                         
                         # Xử lý metadata cho Writing Task 1 (chart_data, time_minutes, word_count)
                         metadata_fields = {}
@@ -277,6 +296,9 @@ async def generate_complete_exam(
                             metadata_fields["time_minutes"] = q.get("time_minutes")
                         if q.get("word_count"):
                             metadata_fields["word_count"] = q.get("word_count")
+                        # Also include locate in metadata if not already stored with answers
+                        if q.get("locate") and not q.get("answers"):
+                            metadata_fields["locate"] = q.get("locate")
                         
                         # Nếu có metadata, lưu vào options (dùng options để lưu vì Text field rộng)
                         # Nếu đã có options (multiple choice), merge vào
@@ -284,11 +306,17 @@ async def generate_complete_exam(
                             if options_json:
                                 # Đã có options (multiple choice), thêm metadata
                                 existing_data = json.loads(options_json) if options_json else []
-                                combined = {
-                                    "options": existing_data,
-                                    "metadata": metadata_fields
-                                }
-                                options_json = json.dumps(combined, ensure_ascii=False)
+                                if isinstance(existing_data, dict):
+                                    # Already has structure like {"answers": [...], "locate": "..."}
+                                    existing_data["metadata"] = metadata_fields
+                                    options_json = json.dumps(existing_data, ensure_ascii=False)
+                                else:
+                                    # Simple list, wrap it
+                                    combined = {
+                                        "answers": existing_data,
+                                        "metadata": metadata_fields
+                                    }
+                                    options_json = json.dumps(combined, ensure_ascii=False)
                             else:
                                 # Không có options, lưu metadata trực tiếp
                                 options_json = json.dumps({"metadata": metadata_fields}, ensure_ascii=False)
@@ -329,10 +357,21 @@ async def generate_complete_exam(
                     
                     # Check for new format: answers array (multiple_choice with is_correct, feedback)
                     if q.get("answers"):
-                        options_json = json.dumps(q.get("answers"))
+                        answers_data = q.get("answers")
+                        # If there's a locate field, store it with the answers
+                        if q.get("locate"):
+                            options_json = json.dumps({
+                                "answers": answers_data,
+                                "locate": q.get("locate")
+                            }, ensure_ascii=False)
+                        else:
+                            options_json = json.dumps(answers_data, ensure_ascii=False)
                     # Fallback: old format with simple options array
                     elif q.get("options"):
-                        options_json = json.dumps(q.get("options"))
+                        options_json = json.dumps(q.get("options"), ensure_ascii=False)
+                    # Store locate even if no answers/options
+                    elif q.get("locate"):
+                        options_json = json.dumps({"locate": q.get("locate")}, ensure_ascii=False)
                     
                     question = ExamQuestion(
                         question_group_id=group.id,

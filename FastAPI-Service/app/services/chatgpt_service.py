@@ -109,20 +109,31 @@ class ChatGPTService:
             f"Generating {num_questions} questions for {exam_type} - {skill} - {topic}"
         )
         
-        # For IELTS Reading with many questions, warn about token limits
-        if exam_type.upper() == "IELTS" and skill.lower() == "reading" and num_questions > 25:
-            logger.warning(f"Large question set ({num_questions} questions) may exceed token limits. Consider splitting into smaller batches.")
+        # Calculate appropriate max_tokens based on question count
+        # Each question needs ~100-150 tokens (content + options + explanation + locate)
+        # Passage needs ~500-1000 tokens
+        # Add buffer for JSON structure
+        estimated_tokens = 1000 + (num_questions * 150)  # Base + questions
         
         # Increase max_tokens for large question sets
         # GPT-3.5-turbo supports up to 4096 output tokens
-        max_tokens = self.max_tokens
-        if num_questions >= 40:
+        # GPT-4 supports up to 8192+ tokens
+        if num_questions >= 30:
             max_tokens = 4096  # Maximum for gpt-3.5-turbo
-            logger.info(f"Using max tokens {max_tokens} for {num_questions} questions")
-        elif num_questions > 25:
+            logger.warning(f"🚨 Large question set ({num_questions} questions)")
+            logger.warning(f"   Estimated tokens needed: {estimated_tokens}")
+            logger.warning(f"   Setting max_tokens to {max_tokens}")
+            logger.warning(f"   ⚠️ AI may not be able to generate all {num_questions} questions in one call")
+            logger.warning(f"   💡 Consider reducing to 20-25 questions for better results")
+        elif num_questions >= 20:
             max_tokens = 3500
-        elif num_questions > 15:
+            logger.info(f"Using max_tokens={max_tokens} for {num_questions} questions (estimated: {estimated_tokens})")
+        elif num_questions >= 10:
             max_tokens = 2500
+            logger.info(f"Using max_tokens={max_tokens} for {num_questions} questions (estimated: {estimated_tokens})")
+        else:
+            max_tokens = self.max_tokens
+            logger.info(f"Using default max_tokens={max_tokens} for {num_questions} questions")
         
         response = await self.generate_completion(messages, max_tokens=max_tokens)
         
@@ -146,8 +157,21 @@ class ChatGPTService:
                 logger.info(f"✅ Has passage: title='{questions['passage'].get('title', 'N/A')}'")
             if "question_groups" in questions:
                 logger.info(f"✅ Has {len(questions['question_groups'])} question groups")
+                total_generated = 0
                 for idx, group in enumerate(questions['question_groups'], 1):
-                    logger.info(f"   Group {idx}: {group.get('group_name', 'N/A')} - {len(group.get('questions', []))} questions")
+                    group_questions = len(group.get('questions', []))
+                    total_generated += group_questions
+                    logger.info(f"   Group {idx}: {group.get('group_name', 'N/A')} - {group_questions} questions")
+                logger.info(f"📊 Total questions generated: {total_generated} / {num_questions} requested")
+                
+                # Validate question count
+                if total_generated < num_questions:
+                    logger.warning(f"⚠️ AI generated only {total_generated} questions but {num_questions} were requested!")
+                    logger.warning(f"⚠️ This may cause issues. Consider:")
+                    logger.warning(f"   1. Reducing num_questions to match what AI can generate")
+                    logger.warning(f"   2. Using simpler question types")
+                    logger.warning(f"   3. Increasing max_tokens further")
+                    logger.warning(f"   4. Splitting into multiple API calls")
         else:
             logger.info(f"Type: {type(questions)}")
             logger.info(f"Length: {len(questions) if isinstance(questions, list) else 'N/A'}")

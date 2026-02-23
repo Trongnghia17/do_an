@@ -531,3 +531,72 @@ line-height: normal;
   line-height: 1.6;
   margin: 0;
 }
+
+/* Explain Button for each answer */
+.test-result__explain-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+
+.test-result__explain-btn:hover {
+  background: #F0F9FF;
+  border-color: #045CCE;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(4, 92, 206, 0.1);
+}
+
+.test-result__explain-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Answer Item Updates */
+.test-result__answer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 8px;
+}
+
+.test-result__answer-label {
+  flex: 1;
+}
+
+/* Answers Section Header */
+.test-result__answers-header {
+  margin-bottom: 24px;
+}
+
+.test-result__answers-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 8px 0;
+}
+
+/* Unanswered Badge Style */
+.test-result__answer-badge.unanswered,
+.test-result__user-answer.unanswered {
+  background-color: #FEF3C7;
+  color: #92400E;
+  border-color: #FDE68A;
+}
+
+.explanation-answer-badge.unanswered {
+  background-color: #FEF3C7;
+  color: #92400E;
+  border: 1.5px solid #FDE68A;
+}
+
+.explanation-status-text.unanswered {
+  color: #F59E0B;
+}

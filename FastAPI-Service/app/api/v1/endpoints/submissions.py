@@ -494,6 +494,44 @@ async def get_submission_detail(
             # Get part name from section
             part_name = section.name if section else "Part 1"
             
+            # Parse metadata from question.options (contains answers array with feedback, locate, etc.)
+            metadata = {}
+            if question.options:
+                try:
+                    options_data = json.loads(question.options) if isinstance(question.options, str) else question.options
+                    
+                    # If options is a list (answers array with feedback), include it in metadata
+                    if isinstance(options_data, list):
+                        metadata["answers"] = options_data
+                    # If options is a dict, it may contain answers, locate, and/or metadata
+                    elif isinstance(options_data, dict):
+                        # Check for answers array
+                        if "answers" in options_data:
+                            metadata["answers"] = options_data["answers"]
+                        # Check for locate field at the same level as answers
+                        if "locate" in options_data:
+                            metadata["locate"] = options_data["locate"]
+                        # Merge any metadata field
+                        if "metadata" in options_data:
+                            metadata.update(options_data["metadata"])
+                        # Handle old structure where options contains the answers directly
+                        if "options" in options_data:
+                            metadata["answers"] = options_data["options"]
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Failed to parse question.options for question {question.id}: {e}")
+            
+            # Add question explanation if available
+            if question.explanation:
+                metadata["explanation"] = question.explanation
+            
+            # Try to extract locate from the answers array if not already in metadata
+            # (for old format where locate might be in individual answer objects)
+            if "locate" not in metadata and "answers" in metadata:
+                for answer_item in metadata["answers"]:
+                    if isinstance(answer_item, dict) and "locate" in answer_item:
+                        metadata["locate"] = answer_item.get("locate")
+                        break
+            
             answers_list.append({
                 "question_id": question.id,
                 "question_number": overall_question_number,
@@ -505,7 +543,8 @@ async def get_submission_detail(
                 "is_correct": is_correct,
                 "score": user_answer.score if user_answer else None,
                 "ai_feedback": json.loads(user_answer.ai_feedback) if (user_answer and user_answer.ai_feedback) else None,
-                "has_ai_grading": bool(user_answer and user_answer.ai_feedback)  # Flag để frontend biết đã có AI grading
+                "has_ai_grading": bool(user_answer and user_answer.ai_feedback),  # Flag để frontend biết đã có AI grading
+                "metadata": metadata if metadata else None  # Include metadata with explanations and locate
             })
             overall_question_number += 1
         
