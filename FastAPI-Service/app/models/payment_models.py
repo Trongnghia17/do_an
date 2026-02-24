@@ -77,3 +77,40 @@ class Payment(Base):
 
     def __repr__(self):
         return f"<Payment {self.id}: {self.order_code} - {self.status}>"
+
+
+class AIGradingConfig(Base):
+    """AI Grading Configuration table - Cấu hình giá chấm AI"""
+    __tablename__ = "ai_grading_config"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    skill_type = Column(String(50), unique=True, nullable=False, index=True)  # 'writing' or 'speaking'
+    cost_per_grading = Column(Integer, nullable=False)  # Số Trứng Cú cần trả cho mỗi lần chấm
+    description = Column(Text, nullable=True)  # Mô tả
+    is_active = Column(Boolean, default=True, nullable=False)  # Có cho phép sử dụng không
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<AIGradingConfig {self.id}: {self.skill_type} - {self.cost_per_grading} OWL>"
+
+
+class WalletTransaction(Base):
+    """Wallet Transactions table - Lịch sử giao dịch ví"""
+    __tablename__ = "wallet_transactions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount = Column(Integer, nullable=False)  # Số tiền thay đổi (âm = trừ, dương = cộng)
+    transaction_type = Column(String(50), nullable=False, index=True)  # 'DEPOSIT', 'AI_GRADING', 'REFUND', etc.
+    description = Column(String(500), nullable=True)  # Mô tả giao dịch
+    reference_id = Column(String(100), nullable=True)  # ID tham chiếu (payment_id, exam_id, etc.)
+    balance_before = Column(Integer, nullable=False)  # Số dư trước giao dịch
+    balance_after = Column(Integer, nullable=False)  # Số dư sau giao dịch
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="wallet_transactions")
+
+    def __repr__(self):
+        return f"<WalletTransaction {self.id}: User {self.user_id} {self.amount:+d} OWL - {self.transaction_type}>"

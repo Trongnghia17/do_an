@@ -4,6 +4,8 @@ import UserManagement from './pages/UserManagement';
 import ExamManagement from './pages/ExamManagement';
 import AIExamGenerator from './pages/AIExamGenerator';
 import PaymentPackageManagement from './pages/PaymentPackageManagement';
+import PaymentHistoryManagement from './pages/PaymentHistoryManagement';
+import AIGradingConfigManagement from './pages/AIGradingConfigManagement';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 
 const adminRoutes = {
@@ -36,6 +38,14 @@ const adminRoutes = {
         {
           path: 'payment-packages',
           element: <PaymentPackageManagement />,
+        },
+        {
+          path: 'payment-history',
+          element: <PaymentHistoryManagement />,
+        },
+        {
+          path: 'ai-grading-config',
+          element: <AIGradingConfigManagement />,
         },
         {
           path: 'analytics',

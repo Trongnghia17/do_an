@@ -110,10 +110,23 @@ class ChatGPTService:
         )
         
         # Calculate appropriate max_tokens based on question count
-        # Each question needs ~100-150 tokens (content + options + explanation + locate)
-        # Passage needs ~500-1000 tokens
-        # Add buffer for JSON structure
-        estimated_tokens = 1000 + (num_questions * 150)  # Base + questions
+        # Multiple choice questions with full structure need more tokens:
+        # - Question content: ~50 tokens
+        # - 3-4 answer options with is_correct/feedback: ~100-150 tokens
+        # - Explanation (50-100 words): ~80-130 tokens
+        # - Locate field: ~30-50 tokens
+        # Total per multiple_choice: ~260-380 tokens
+        # Other question types: ~100-150 tokens
+        # Audio script/passage: ~500-1000 tokens
+        # JSON structure overhead: ~200-300 tokens
+        
+        # Estimate based on question types
+        if question_types and "multiple_choice" in question_types:
+            tokens_per_question = 350  # Multiple choice needs more
+        else:
+            tokens_per_question = 150  # Other types
+        
+        estimated_tokens = 1200 + (num_questions * tokens_per_question)
         
         # Increase max_tokens for large question sets
         # GPT-3.5-turbo supports up to 4096 output tokens
@@ -125,14 +138,17 @@ class ChatGPTService:
             logger.warning(f"   Setting max_tokens to {max_tokens}")
             logger.warning(f"   ⚠️ AI may not be able to generate all {num_questions} questions in one call")
             logger.warning(f"   💡 Consider reducing to 20-25 questions for better results")
-        elif num_questions >= 20:
-            max_tokens = 3500
+        elif num_questions >= 15:
+            max_tokens = 4000  # Increased for 15-29 questions
             logger.info(f"Using max_tokens={max_tokens} for {num_questions} questions (estimated: {estimated_tokens})")
         elif num_questions >= 10:
-            max_tokens = 2500
+            max_tokens = 3500  # Increased for 10-14 questions (was 2500)
+            logger.info(f"Using max_tokens={max_tokens} for {num_questions} questions (estimated: {estimated_tokens})")
+        elif num_questions >= 5:
+            max_tokens = 2500  # For 5-9 questions
             logger.info(f"Using max_tokens={max_tokens} for {num_questions} questions (estimated: {estimated_tokens})")
         else:
-            max_tokens = self.max_tokens
+            max_tokens = self.max_tokens  # Default for < 5 questions
             logger.info(f"Using default max_tokens={max_tokens} for {num_questions} questions")
         
         response = await self.generate_completion(messages, max_tokens=max_tokens)
@@ -155,7 +171,28 @@ class ChatGPTService:
             logger.info(f"Keys: {list(questions.keys())}")
             if "passage" in questions:
                 logger.info(f"✅ Has passage: title='{questions['passage'].get('title', 'N/A')}'")
-            if "question_groups" in questions:
+            
+            # Check for Listening format (parts)
+            if "parts" in questions:
+                logger.info(f"✅ Has {len(questions['parts'])} parts (Listening format)")
+                total_generated = 0
+                for part_idx, part in enumerate(questions['parts'], 1):
+                    part_groups = part.get('question_groups', [])
+                    part_questions = sum(len(g.get('questions', [])) for g in part_groups)
+                    total_generated += part_questions
+                    logger.info(f"   Part {part_idx}: {part.get('title', 'N/A')} - {part_questions} questions")
+                logger.info(f"📊 Total questions generated: {total_generated} / {num_questions} requested")
+                
+                if total_generated < num_questions:
+                    logger.error(f"❌ INCOMPLETE: AI generated only {total_generated}/{num_questions} questions!")
+                    logger.error(f"💡 Solutions:")
+                    logger.error(f"   1. Increase max_tokens (currently using limits above)")
+                    logger.error(f"   2. Reduce num_questions to {total_generated} or less")
+                    logger.error(f"   3. Use simpler question types (avoid multiple_choice if possible)")
+                    logger.error(f"   4. The response may be TRUNCATED - check logs above")
+            
+            # Check for Reading/Writing format (question_groups)
+            elif "question_groups" in questions:
                 logger.info(f"✅ Has {len(questions['question_groups'])} question groups")
                 total_generated = 0
                 for idx, group in enumerate(questions['question_groups'], 1):
@@ -166,12 +203,12 @@ class ChatGPTService:
                 
                 # Validate question count
                 if total_generated < num_questions:
-                    logger.warning(f"⚠️ AI generated only {total_generated} questions but {num_questions} were requested!")
-                    logger.warning(f"⚠️ This may cause issues. Consider:")
-                    logger.warning(f"   1. Reducing num_questions to match what AI can generate")
-                    logger.warning(f"   2. Using simpler question types")
-                    logger.warning(f"   3. Increasing max_tokens further")
-                    logger.warning(f"   4. Splitting into multiple API calls")
+                    logger.error(f"❌ INCOMPLETE: AI generated only {total_generated}/{num_questions} questions!")
+                    logger.error(f"💡 Solutions:")
+                    logger.error(f"   1. Increase max_tokens (currently using limits above)")
+                    logger.error(f"   2. Reduce num_questions to {total_generated} or less")
+                    logger.error(f"   3. Use simpler question types (avoid multiple_choice if possible)")
+                    logger.error(f"   4. The response may be TRUNCATED - check logs above")
         else:
             logger.info(f"Type: {type(questions)}")
             logger.info(f"Length: {len(questions) if isinstance(questions, list) else 'N/A'}")
@@ -357,6 +394,13 @@ class ChatGPTService:
                 response = re.sub(r'^```(?:json)?\s*\n?', '', response)
                 response = re.sub(r'\n?```\s*$', '', response)
                 response = response.strip()
+            
+            # Check if response looks truncated
+            if not response.endswith("}") and not response.endswith("]"):
+                logger.error("⚠️ JSON response appears to be truncated (doesn't end with } or ])")
+                logger.error(f"Response ends with: ...{response[-100:]}")
+                logger.error("💡 Try increasing max_tokens or reducing num_questions")
+                # Still try to parse, but warn user
             
             # Check if response is an object (IELTS special formats)
             if response.startswith("{"):

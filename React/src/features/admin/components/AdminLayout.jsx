@@ -14,6 +14,7 @@ import {
   RobotOutlined,
   FileTextOutlined,
   DollarOutlined,
+  TransactionOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '@/features/user/auth/store/auth.store';
@@ -61,6 +62,16 @@ const AdminLayout = () => {
       key: '/admin/payment-packages',
       icon: <DollarOutlined />,
       label: 'Quản lý gói nạp',
+    },
+    {
+      key: '/admin/payment-history',
+      icon: <TransactionOutlined />,
+      label: 'Lịch sử nạp tiền',
+    },
+    {
+      key: '/admin/ai-grading-config',
+      icon: <SettingOutlined />,
+      label: 'Cấu hình AI Grading',
     },
     {
       key: '/admin/ai-generator',

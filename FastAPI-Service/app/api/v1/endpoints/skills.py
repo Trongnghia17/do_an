@@ -47,6 +47,7 @@ class SkillCreateRequest(BaseModel):
 
 
 class SkillUpdateRequest(BaseModel):
+    exam_test_id: Optional[int] = None
     name: Optional[str] = None
     skill_type: Optional[str] = None
     time_limit: Optional[int] = None
@@ -357,7 +358,21 @@ async def update_skill(
             detail="Skill not found"
         )
     
+    # Validate exam_test if provided
+    if skill_data.exam_test_id is not None:
+        result = await db.execute(
+            select(ExamTest).where(ExamTest.id == skill_data.exam_test_id)
+        )
+        exam_test = result.scalar_one_or_none()
+        if not exam_test:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Exam test not found"
+            )
+    
     # Update fields
+    if skill_data.exam_test_id is not None:
+        skill.exam_test_id = skill_data.exam_test_id
     if skill_data.name is not None:
         skill.name = skill_data.name
     if skill_data.skill_type is not None:

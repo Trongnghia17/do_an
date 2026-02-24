@@ -9,11 +9,91 @@ import json
 from app.services.chatgpt_service import chatgpt_service
 from app.models.auth_models import User
 from app.models.exam_models import UserExamAnswer
+from app.models.payment_models import UserWallet, AIGradingConfig, WalletTransaction
 from app.database import get_db
 from app.auth import get_current_user
 from loguru import logger
 
 router = APIRouter()
+
+
+# ==================== Helper Functions ====================
+
+async def get_ai_grading_cost(db: AsyncSession, skill_type: str) -> int:
+    """Get AI grading cost for a skill type"""
+    result = await db.execute(
+        select(AIGradingConfig).where(
+            AIGradingConfig.skill_type == skill_type,
+            AIGradingConfig.is_active == True
+        )
+    )
+    config = result.scalar_one_or_none()
+    
+    if not config:
+        # Default cost if not configured
+        return 50
+    
+    return config.cost_per_grading
+
+
+async def deduct_ai_grading_cost(db: AsyncSession, user_id: int, skill_type: str) -> dict:
+    """
+    Deduct AI grading cost from user wallet and create transaction record
+    Returns dict with cost and new_balance
+    Raises HTTPException if insufficient balance
+    """
+    # Get cost
+    cost = await get_ai_grading_cost(db, skill_type)
+    
+    # Get user wallet
+    result = await db.execute(
+        select(UserWallet).where(UserWallet.user_id == user_id)
+    )
+    wallet = result.scalar_one_or_none()
+    
+    if not wallet:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Bạn chưa có ví. Vui lòng nạp tiền để sử dụng AI chấm điểm."
+        )
+    
+    # Check balance
+    if wallet.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Số dư không đủ. Cần {cost} Trứng Cú, bạn có {wallet.balance} Trứng Cú. Vui lòng nạp thêm."
+        )
+    
+    # Store balance before
+    balance_before = wallet.balance
+    
+    # Deduct balance
+    wallet.balance -= cost
+    wallet.total_spent += cost
+    wallet.updated_at = datetime.utcnow()
+    
+    # Create transaction record
+    transaction = WalletTransaction(
+        user_id=user_id,
+        amount=-cost,  # Negative for deduction
+        transaction_type='AI_GRADING',
+        description=f'Chấm điểm AI - {skill_type.upper()}',
+        reference_id=None,  # Could add exam_id or answer_id later
+        balance_before=balance_before,
+        balance_after=wallet.balance,
+        created_at=datetime.utcnow()
+    )
+    db.add(transaction)
+    
+    await db.commit()
+    await db.refresh(wallet)
+    
+    logger.info(f"Deducted {cost} OWL from user {user_id} for {skill_type} AI grading. New balance: {wallet.balance}")
+    
+    return {
+        "cost": cost,
+        "new_balance": wallet.balance
+    }
 
 
 class WritingGradingRequest(BaseModel):
@@ -59,13 +139,18 @@ async def grade_writing(
     Chấm bài Writing tự động bằng ChatGPT
     
     Endpoint này:
-    - Nhận câu trả lời Writing từ học sinh
+    - Kiểm tra số dư ví
+    - Trừ Trứng Cú từ ví
     - Sử dụng AI để chấm điểm theo tiêu chí chuẩn
     - Trả về điểm số và feedback chi tiết
     """
     try:
         logger.info(f"Grading writing answer for question: {request.question_id}")
         
+        # Deduct cost from wallet BEFORE grading
+        payment_info = await deduct_ai_grading_cost(db, current_user.id, "writing")
+        
+        # Grade with AI
         result = await chatgpt_service.grade_writing_answer(
             question=request.question_text,
             answer=request.answer,
@@ -73,13 +158,12 @@ async def grade_writing(
             criteria=request.criteria,
         )
         
-        # Note: Saving to user_exam_answers table would require that table to exist
-        # For now, just return the grading result
+        logger.info(f"Writing graded successfully. Cost: {payment_info['cost']} OWL, New balance: {payment_info['new_balance']}")
         
         return GradingResponse(
             status="success",
             question_id=request.question_id,
-            overall_band=result.get("overall_score", 0),  # Map overall_score to overall_band
+            overall_band=result.get("overall_score", 0),
             criteria_scores=result.get("criteria_scores", {}),
             criteria_feedback=result.get("criteria_feedback", {}),
             strengths=result.get("strengths", []),
@@ -89,6 +173,9 @@ async def grade_writing(
             band_justification=result.get("band_justification"),
         )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions (like insufficient balance)
+        raise
     except Exception as e:
         logger.error(f"Error grading writing: {str(e)}")
         raise HTTPException(
@@ -107,13 +194,18 @@ async def grade_speaking(
     Chấm bài Speaking tự động bằng ChatGPT
     
     Endpoint này:
-    - Nhận transcript của câu trả lời Speaking
+    - Kiểm tra số dư ví
+    - Trừ Trứng Cú từ ví
     - Sử dụng AI để chấm điểm theo tiêu chí chuẩn
     - Trả về điểm số và feedback chi tiết
     """
     try:
         logger.info(f"Grading speaking answer for question: {request.question_id}")
         
+        # Deduct cost from wallet BEFORE grading
+        payment_info = await deduct_ai_grading_cost(db, current_user.id, "speaking")
+        
+        # Grade with AI
         result = await chatgpt_service.grade_speaking_answer(
             question=request.question_text,
             transcript=request.transcript,
@@ -121,10 +213,12 @@ async def grade_speaking(
             criteria=request.criteria,
         )
         
+        logger.info(f"Speaking graded successfully. Cost: {payment_info['cost']} OWL, New balance: {payment_info['new_balance']}")
+        
         return GradingResponse(
             status="success",
             question_id=request.question_id,
-            overall_band=result.get("overall_score", 0),  # Map overall_score to overall_band
+            overall_band=result.get("overall_score", 0),
             criteria_scores=result.get("criteria_scores", {}),
             criteria_feedback=result.get("criteria_feedback", {}),
             strengths=result.get("strengths", []),
@@ -135,11 +229,59 @@ async def grade_speaking(
             pronunciation_note=result.get("pronunciation_note"),
         )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions (like insufficient balance)
+        raise
     except Exception as e:
         logger.error(f"Error grading speaking: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to grade speaking: {str(e)}"
+        )
+
+
+@router.get("/ai-grading-cost/{skill_type}")
+async def get_ai_grading_cost_endpoint(
+    skill_type: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get AI grading cost for a skill type
+    Returns the cost in OWL eggs and user's current balance
+    """
+    if skill_type not in ['writing', 'speaking']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="skill_type phải là 'writing' hoặc 'speaking'"
+        )
+    
+    try:
+        # Get cost
+        cost = await get_ai_grading_cost(db, skill_type)
+        
+        # Get user wallet
+        result = await db.execute(
+            select(UserWallet).where(UserWallet.user_id == current_user.id)
+        )
+        wallet = result.scalar_one_or_none()
+        
+        current_balance = wallet.balance if wallet else 0
+        can_afford = current_balance >= cost
+        
+        return {
+            "skill_type": skill_type,
+            "cost": cost,
+            "current_balance": current_balance,
+            "can_afford": can_afford,
+            "shortfall": max(0, cost - current_balance)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting AI grading cost: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Có lỗi xảy ra: {str(e)}"
         )
 
 

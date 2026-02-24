@@ -9,7 +9,7 @@ import random
 from loguru import logger
 
 from app.models.auth_models import User
-from app.models.payment_models import Payment, UserWallet, PaymentStatus
+from app.models.payment_models import Payment, UserWallet, PaymentStatus, WalletTransaction
 from app.auth import get_current_user
 from app.database import get_db
 from app.services.payos_service import payos_service
@@ -300,20 +300,31 @@ async def get_payment_history(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get user payment history
+    Get user payment and transaction history (combined)
     """
     try:
-        result = await db.execute(
+        # Get payments (deposits)
+        payments_result = await db.execute(
             select(Payment)
             .where(Payment.user_id == current_user.id)
             .order_by(desc(Payment.created_at))
             .limit(100)
         )
-        payments = result.scalars().all()
+        payments = payments_result.scalars().all()
+        
+        # Get wallet transactions (AI grading, etc.)
+        transactions_result = await db.execute(
+            select(WalletTransaction)
+            .where(WalletTransaction.user_id == current_user.id)
+            .order_by(desc(WalletTransaction.created_at))
+            .limit(100)
+        )
+        transactions = transactions_result.scalars().all()
         
         history = []
+        
+        # Add payments
         for p in payments:
-            # Map status
             status_map = {
                 PaymentStatus.PENDING: "pending",
                 PaymentStatus.PAID: "done",
@@ -324,12 +335,25 @@ async def get_payment_history(
             history.append(PaymentHistoryItem(
                 id=p.order_code,
                 time=p.created_at.strftime("%H:%M · %d/%m/%Y"),
-                eggs=p.owl_amount,
+                eggs=p.owl_amount,  # Positive for deposits
                 note=p.description or f"Nạp {p.owl_amount} Trứng Cú",
                 status=status_map.get(p.status, "pending")
             ))
         
-        return history
+        # Add wallet transactions
+        for t in transactions:
+            history.append(PaymentHistoryItem(
+                id=f"TXN-{t.id}",
+                time=t.created_at.strftime("%H:%M · %d/%m/%Y"),
+                eggs=t.amount,  # Negative for AI grading
+                note=t.description or f"{t.transaction_type}",
+                status="done"  # Transactions are always completed
+            ))
+        
+        # Sort by time (most recent first)
+        history.sort(key=lambda x: datetime.strptime(x.time, "%H:%M · %d/%m/%Y"), reverse=True)
+        
+        return history[:100]  # Limit to 100 items
         
     except Exception as e:
         logger.error(f"Error getting payment history: {str(e)}")

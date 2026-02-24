@@ -57,35 +57,27 @@ For MULTIPLE CHOICE:
   {{
     "answer_content": "The answer text",
     "is_correct": true,  // only ONE answer should be true
-    "feedback": "Detailed explanation (50-100 words) why this is correct/incorrect - explain the reasoning, reference specific parts of the passage, and teach the concept"
+    "feedback": "Brief explanation why this is correct/incorrect"
   }}
 - correct_answer: The text of the correct answer (for quick reference)
-- explanation: Detailed explanation (50-100 words) why the correct answer is right and why other options are wrong
-- locate: Specific text snippet or paragraph reference from the passage where the answer is found (e.g., "Paragraph 3: 'The research shows...'", "Lines 15-17", etc.)
 
 For SHORT TEXT (Short Answer):
 - group_name: "Questions X-Y"
 - question_type: "short_text"
 - instruction: "Answer the questions below.\\n\\nChoose NO MORE THAN TWO WORDS AND/OR A NUMBER from the passage for each answer.\\n\\nWrite your answers in boxes X-Y on your answer sheet."
 - correct_answer: Must be exact words from the passage (max 2-3 words)
-- explanation: Detailed explanation (30-50 words) of why this answer is correct and how to find it in the passage
-- locate: Specific text snippet or paragraph reference where the answer is found (e.g., "Paragraph 2: 'The temperature was recorded at 25°C'")
 
 For YES/NO/NOT GIVEN:
 - group_name: "Questions X-Y"
 - question_type: "yes_no_not_given"
 - instruction: "Do the following statements agree with the views/claims of the writer?\\n\\nIn boxes X-Y on your answer sheet, write\\n\\nYES if the statement agrees with the views of the writer\\nNO if the statement contradicts the views of the writer\\nNOT GIVEN if it is impossible to say what the writer thinks about this"
 - correct_answer: Must be exactly "YES", "NO", or "NOT GIVEN"
-- explanation: Detailed explanation (50-80 words) explaining why this is YES/NO/NOT GIVEN, referencing the writer's views in the passage
-- locate: Specific paragraph or text snippet where the writer's view is expressed (or explain why it's NOT GIVEN)
 
 For TRUE/FALSE/NOT GIVEN:
 - group_name: "Questions X-Y"
 - question_type: "true_false_not_given"
 - instruction: "Do the following statements agree with the information given in Reading Passage 1?\\n\\nIn boxes X-Y on your answer sheet, write\\n\\nTRUE if the statement agrees with the information\\nFALSE if it contradicts the information\\nNOT GIVEN if there is no information on this"
 - correct_answer: Must be exactly "TRUE", "FALSE", or "NOT GIVEN"
-- explanation: Detailed explanation (50-80 words) explaining why this is TRUE/FALSE/NOT GIVEN based on passage information
-- locate: Specific paragraph or text snippet that proves the answer (or explain why it's NOT GIVEN)
 
 **OUTPUT FORMAT (JSON):**
 Return ONLY a valid JSON object with this EXACT structure:
@@ -130,8 +122,7 @@ Return ONLY a valid JSON object with this EXACT structure:
             }}
           ],
           "correct_answer": "Correct option text",
-          "explanation": "[Detailed explanation 50-100 words explaining why this answer is correct, why other options are wrong, and teaching the underlying concept or reasoning]",
-          "locate": "Paragraph X: '[relevant text snippet from passage]' or 'Lines X-Y' showing where the answer is found",
+          "explanation": "[Brief explanation]",
           "points": 1.0
         }}
       ]

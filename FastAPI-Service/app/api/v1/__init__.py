@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, exams, users, questions, generation, grading, upload, skills, sections, groups, otp, oauth, submissions, payments, admin_payment_packages
+from app.api.v1.endpoints import auth, exams, users, questions, generation, grading, upload, skills, sections, groups, otp, oauth, submissions, payments, admin_payment_packages, admin_payments, admin_ai_config
 
 api_router = APIRouter()
 
@@ -17,6 +17,12 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 
 # Admin Payment Packages routes (✅ Ready!)
 api_router.include_router(admin_payment_packages.router, prefix="/admin/payment-packages", tags=["admin-payment-packages"])
+
+# Admin Payment History routes (✅ Ready!)
+api_router.include_router(admin_payments.router, prefix="/admin/payments", tags=["admin-payments"])
+
+# Admin AI Grading Config routes (✅ Ready!)
+api_router.include_router(admin_ai_config.router, prefix="/admin/ai-grading-config", tags=["admin-ai-config"])
 
 # Exam management (SQLAlchemy - ✅ Ready!)
 api_router.include_router(exams.router, prefix="/exams", tags=["exams"])

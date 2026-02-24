@@ -137,7 +137,7 @@ class PromptLoader:
             return module.get_writing_generation_prompt(topic, difficulty)
         
         elif skill == "speaking":
-            return module.get_speaking_generation_prompt(topic, difficulty)
+            return module.get_speaking_generation_prompt(topic, difficulty, num_questions)
         
         else:
             return self._get_default_generation_prompt(

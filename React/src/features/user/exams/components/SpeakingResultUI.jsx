@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './SpeakingResultUI.css';
 
 /**
@@ -6,8 +6,46 @@ import './SpeakingResultUI.css';
  * Thiết kế riêng với layout chuyên biệt cho Speaking
  */
 const SpeakingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) => {
+  const [aiCost, setAiCost] = useState(null);
+  const [loadingCost, setLoadingCost] = useState(false);
+  
   const totalQuestions = result?.total_questions || 0;
   const answeredQuestions = result?.answered_questions || 0;
+
+  // Fetch AI grading cost when component mounts
+  useEffect(() => {
+    const fetchAiCost = async () => {
+      try {
+        setLoadingCost(true);
+        const url = `${import.meta.env.VITE_FASTAPI_URL}/api/v1/grading/ai-grading-cost/speaking`;
+        console.log('Fetching AI cost from:', url);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        console.log('Response status:', response.status);
+        const data = await response.json();
+        console.log('AI Cost data:', data);
+        
+        if (response.ok) {
+          setAiCost(data);
+        } else {
+          console.error('API Error:', data);
+        }
+      } catch (error) {
+        console.error('Error fetching AI cost:', error);
+      } finally {
+        setLoadingCost(false);
+      }
+    };
+    
+    if (!aiGradingResult) {
+      fetchAiCost();
+    }
+  }, [aiGradingResult]);
 
   return (
     <div className="speaking-result">
@@ -123,21 +161,73 @@ const SpeakingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =
               <div className="score-card__icon">🎙️</div>
               <div className="score-card__pending-text">Đang chờ chấm điểm</div>
               
+              {/* AI Cost Info */}
+              {aiCost && !loadingCost && (
+                <div style={{ 
+                  background: aiCost.can_afford ? '#fef3c7' : '#fee2e2', 
+                  padding: '0.75rem', 
+                  borderRadius: '8px', 
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem',
+                  marginTop: '1rem',
+                  border: aiCost.can_afford ? '1px solid #fcd34d' : '1px solid #fca5a5'
+                }}>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    💰 Chi phí: <strong>{aiCost.cost} 🥚</strong>
+                  </div>
+                  <div style={{ marginBottom: aiCost.can_afford ? 0 : '0.75rem' }}>
+                    Số dư: <strong>{aiCost.current_balance} 🥚</strong>
+                  </div>
+                  {!aiCost.can_afford && (
+                    <>
+                      <div style={{ color: '#dc2626', marginBottom: '0.75rem', fontWeight: '600' }}>
+                        ⚠️ Thiếu {aiCost.shortfall} 🥚
+                      </div>
+                      <button
+                        onClick={() => window.location.href = '/lich-su-thanh-toan'}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 1rem',
+                          background: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        💳 Nạp Trứng Cú Ngay
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              
               {/* AI Grading Button */}
               <button 
                 className="btn-ai-grading"
                 onClick={onAIGrading}
-                disabled={aiLoading}
+                disabled={aiLoading || loadingCost || (aiCost && !aiCost.can_afford)}
               >
                 {aiLoading ? (
                   <>
                     <span className="spinner"></span>
                     Đang chấm...
                   </>
+                ) : loadingCost ? (
+                  <>
+                    <span className="spinner"></span>
+                    Đang tải...
+                  </>
+                ) : (aiCost && !aiCost.can_afford) ? (
+                  <>
+                    ⚠️ Không đủ Trứng Cú
+                  </>
                 ) : (
                   <>
                     <span className="ai-icon">🤖</span>
-                    Chấm Điểm AI Ngay
+                    Chấm Điểm AI ({aiCost?.cost || '...'} 🥚)
                   </>
                 )}
               </button>

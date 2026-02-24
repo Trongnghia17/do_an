@@ -6,12 +6,28 @@
   <component name="ChangeListManager">
     <list default="true" id="b28cf914-2307-40b3-b657-3544debb399a" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/submissions.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/submissions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/alembic/versions/h9i0j1k2l3m4_create_writing_corrections_table.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/alembic/versions/i1j2k3l4m5n6_create_ai_grading_config_table.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/grading.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/grading.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/payments.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/payments.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/skills.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/api/v1/endpoints/skills.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/models/auth_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/models/auth_models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/models/payment_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/models/payment_models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/chatgpt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/chatgpt_service.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_listening.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_listening.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_reading.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_reading.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.css" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_speaking.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/generation/ielts_speaking.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/prompt_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/FastAPI-Service/app/services/prompts/prompt_loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/app/routes.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/app/routes.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/components/AdminLayout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/components/AdminLayout.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/pages/AIGradingConfigManagement.css" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/pages/AIGradingConfigManagement.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/pages/AIGradingConfigManagement.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/pages/AIGradingConfigManagement.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/pages/SkillManagement.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/pages/SkillManagement.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/admin/routes.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/admin/routes.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/components/SpeakingResultUI.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/components/SpeakingResultUI.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/components/WritingResultUI.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/components/WritingResultUI.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/ReadingTest.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/ReadingTest.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/React/src/features/user/exams/pages/TestResult.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -39,20 +55,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "/home/dell/nova/quanlybanhang",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/dell/nova/quanlybanhang&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -79,6 +95,9 @@
       <workItem from="1767978839270" duration="4475000" />
       <workItem from="1770144579433" duration="691000" />
       <workItem from="1770621946465" duration="477000" />
+      <workItem from="1771837163648" duration="85000" />
+      <workItem from="1771903138270" duration="1863000" />
+      <workItem from="1771923097711" duration="653000" />
     </task>
     <servers />
   </component>

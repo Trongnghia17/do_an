@@ -237,7 +237,6 @@ const SkillManagement = () => {
       
       // Transform UI data to API format
       const skillData = {
-        exam_test_id: values.examTestId,
         name: values.name,
         skill_type: values.skillType,
         time_limit: values.timeLimit || null,
@@ -248,12 +247,15 @@ const SkillManagement = () => {
       };
       
       if (editingSkill) {
-        // Update - không cần exam_test_id
-        delete skillData.exam_test_id;
+        // Update - có thể cập nhật exam_test_id
+        if (values.examTestId) {
+          skillData.exam_test_id = values.examTestId;
+        }
         await adminService.updateSkill(editingSkill.id, skillData);
         message.success('Đã cập nhật kỹ năng thành công');
       } else {
-        // Create
+        // Create - exam_test_id là bắt buộc
+        skillData.exam_test_id = values.examTestId;
         await adminService.createSkill(skillData);
         message.success('Đã tạo kỹ năng thành công');
       }

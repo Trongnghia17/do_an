@@ -555,7 +555,18 @@ export default function TestResult() {
       }
     } catch (error) {
       console.error('AI Grading error:', error);
-      alert('Có lỗi khi chấm điểm bằng AI. Vui lòng thử lại.');
+      
+      // Handle specific error messages
+      if (error.response?.status === 402) {
+        // Payment required - insufficient balance
+        alert(`❌ ${error.response?.data?.detail || 'Số dư không đủ để chấm AI. Vui lòng nạp thêm Trứng Cú.'}`);
+      } else if (error.response?.status === 400 && error.response?.data?.detail?.includes('chưa có ví')) {
+        // No wallet
+        alert('❌ Bạn chưa có ví. Vui lòng nạp tiền lần đầu để kích hoạt ví.');
+      } else {
+        alert('Có lỗi khi chấm điểm bằng AI. Vui lòng thử lại.');
+      }
+      
       setShowAIGrading(false);
     }
   };

@@ -69,6 +69,7 @@ class User(Base):
     login_activities = relationship("LoginActivity", back_populates="user", cascade="all, delete-orphan")
     wallet = relationship("UserWallet", back_populates="user", uselist=False, cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="user", cascade="all, delete-orphan")
+    wallet_transactions = relationship("WalletTransaction", back_populates="user", cascade="all, delete-orphan")
     # permissions system removed - keep roles only
 
     def verify_password(self, plain_password: str) -> bool:

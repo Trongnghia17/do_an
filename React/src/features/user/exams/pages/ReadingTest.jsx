@@ -176,8 +176,20 @@ export default function ReadingTest() {
                     if (group.questions && group.questions.length > 0) {
                       const firstQuestion = group.questions[0];
                       
-                      // Check if options array exists directly on the question
-                      if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
+                      // Check if options.answers exists (new API format: {answers: [...]})
+                      if (firstQuestion.options && firstQuestion.options.answers && Array.isArray(firstQuestion.options.answers) && firstQuestion.options.answers.length > 0) {
+                        options = firstQuestion.options.answers.map((_, index) => String.fromCharCode(65 + index));
+                        optionsWithContent = firstQuestion.options.answers.map((option, index) => {
+                          let content = option.answer_content || option.content || '';
+                          content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                          return {
+                            letter: String.fromCharCode(65 + index),
+                            content: content
+                          };
+                        });
+                      }
+                      // Check if options is array directly
+                      else if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
                         options = firstQuestion.options.map((_, index) => String.fromCharCode(65 + index));
                         optionsWithContent = firstQuestion.options.map((option, index) => {
                           let content = option.answer_content || option.content || '';
@@ -319,8 +331,23 @@ export default function ReadingTest() {
                           console.log('First question:', firstQuestion);
                           console.log('First question options:', firstQuestion.options);
                           
+                          // Check if options.answers exists (new API format: {answers: [...]})
+                          if (firstQuestion.options && firstQuestion.options.answers && Array.isArray(firstQuestion.options.answers) && firstQuestion.options.answers.length > 0) {
+                            options = firstQuestion.options.answers.map((_, index) => String.fromCharCode(65 + index));
+                            optionsWithContent = firstQuestion.options.answers.map((option, index) => {
+                              let content = option.answer_content || option.content || '';
+                              content = content.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+                              return {
+                                letter: String.fromCharCode(65 + index),
+                                content: content
+                              };
+                            });
+                            console.log('✓ Options extracted from question.options.answers');
+                            console.log('Final options:', options);
+                            console.log('Final optionsWithContent:', optionsWithContent);
+                          }
                           // Check if options array exists directly on the question
-                          if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
+                          else if (firstQuestion.options && Array.isArray(firstQuestion.options) && firstQuestion.options.length > 0) {
                             options = firstQuestion.options.map((_, index) => String.fromCharCode(65 + index));
                             optionsWithContent = firstQuestion.options.map((option, index) => {
                               let content = option.answer_content || option.content || '';
@@ -330,7 +357,7 @@ export default function ReadingTest() {
                                 content: content
                               };
                             });
-                            console.log('✓ Options extracted directly from question.options');
+                            console.log('✓ Options extracted directly from question.options array');
                             console.log('Final options:', options);
                             console.log('Final optionsWithContent:', optionsWithContent);
                           }
