@@ -15,6 +15,7 @@ import {
   FileTextOutlined,
   DollarOutlined,
   TransactionOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '@/features/user/auth/store/auth.store';
@@ -67,6 +68,11 @@ const AdminLayout = () => {
       key: '/admin/payment-history',
       icon: <TransactionOutlined />,
       label: 'Lịch sử nạp tiền',
+    },
+    {
+      key: '/admin/exam-history',
+      icon: <FileDoneOutlined />,
+      label: 'Lịch sử làm bài',
     },
     {
       key: '/admin/ai-grading-config',

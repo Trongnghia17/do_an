@@ -1,74 +1,76 @@
-import { Card, Col, Row, Statistic, Table, Tag, Progress } from 'antd';
+import { Card, Col, Row, Statistic, Table, Tag, Progress, Alert } from 'antd';
 import {
   UserOutlined,
   BookOutlined,
   DollarOutlined,
   RiseOutlined,
   ArrowUpOutlined,
-  ArrowDownOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import adminService from '../services/adminService';
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState({
-    users: 0,
-    exams: 0,
-    revenue: 0,
-    growth: 0,
+  const [userStats, setUserStats] = useState({ total: 0, active: 0, inactive: 0 });
+  const [examCount, setExamCount] = useState(0);
+  const [paymentStats, setPaymentStats] = useState({
+    total_transactions: 0,
+    total_amount: 0,
+    paid_count: 0,
   });
-
-  const [loading, setLoading] = useState(false);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch dashboard stats from API
-    fetchDashboardStats();
+    fetchDashboardData();
   }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await adminService.getDashboardStats();
-      
-      // Mock data for now
-      setTimeout(() => {
-        setStats({
-          users: 1234,
-          exams: 567,
-          revenue: 45678,
-          growth: 12.5,
-        });
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+      const [userStatsData, examsData, paymentStatsData, recentUsersData] = await Promise.allSettled([
+        adminService.getDashboardStats(),
+        adminService.getExams({ per_page: 100 }),
+        adminService.getPaymentStatistics(),
+        adminService.getRecentUsers(5),
+      ]);
+
+      if (userStatsData.status === 'fulfilled') {
+        setUserStats(userStatsData.value);
+      }
+
+      if (examsData.status === 'fulfilled') {
+        const exams = Array.isArray(examsData.value) ? examsData.value : (examsData.value?.items ?? []);
+        setExamCount(exams.length);
+      }
+
+      if (paymentStatsData.status === 'fulfilled') {
+        setPaymentStats(paymentStatsData.value);
+      }
+
+      if (recentUsersData.status === 'fulfilled') {
+        const users = Array.isArray(recentUsersData.value)
+          ? recentUsersData.value
+          : (recentUsersData.value?.items ?? []);
+        setRecentUsers(
+          users.map((u) => ({
+            key: u.id,
+            name: u.name || '—',
+            email: u.email,
+            status: u.is_active ? 'active' : 'inactive',
+            date: u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : '—',
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Không thể tải dữ liệu dashboard. Vui lòng thử lại.');
+    } finally {
       setLoading(false);
     }
   };
-
-  const recentUsers = [
-    {
-      key: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      status: 'active',
-      date: '2024-01-15',
-    },
-    {
-      key: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      status: 'active',
-      date: '2024-01-14',
-    },
-    {
-      key: '3',
-      name: 'Bob Johnson',
-      email: 'bob@example.com',
-      status: 'inactive',
-      date: '2024-01-13',
-    },
-  ];
 
   const userColumns = [
     {
@@ -102,18 +104,37 @@ const AdminDashboard = () => {
     <div>
       <h1 style={{ marginBottom: 24 }}>Dashboard</h1>
 
+      {error && (
+        <Alert
+          message={error}
+          type="error"
+          showIcon
+          closable
+          style={{ marginBottom: 16 }}
+          action={
+            <span
+              style={{ cursor: 'pointer', color: '#1890ff' }}
+              onClick={fetchDashboardData}
+            >
+              Thử lại
+            </span>
+          }
+        />
+      )}
+
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false}>
             <Statistic
-              title="Total Users"
-              value={stats.users}
+              title="Tổng người dùng"
+              value={userStats.total}
               prefix={<UserOutlined />}
               loading={loading}
               valueStyle={{ color: '#3f8600' }}
             />
-            <div style={{ marginTop: 16 }}>
-              <ArrowUpOutlined style={{ color: '#3f8600' }} /> 8.5% from last month
+            <div style={{ marginTop: 16, color: '#666' }}>
+              <CheckCircleOutlined style={{ color: '#3f8600' }} />{' '}
+              {userStats.active} đang hoạt động
             </div>
           </Card>
         </Col>
@@ -121,14 +142,14 @@ const AdminDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false}>
             <Statistic
-              title="Total Exams"
-              value={stats.exams}
+              title="Tổng đề thi"
+              value={examCount}
               prefix={<BookOutlined />}
               loading={loading}
               valueStyle={{ color: '#1890ff' }}
             />
-            <div style={{ marginTop: 16 }}>
-              <ArrowUpOutlined style={{ color: '#3f8600' }} /> 12.3% from last month
+            <div style={{ marginTop: 16, color: '#666' }}>
+              <BookOutlined /> Tất cả loại đề thi
             </div>
           </Card>
         </Col>
@@ -136,15 +157,16 @@ const AdminDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false}>
             <Statistic
-              title="Revenue"
-              value={stats.revenue}
+              title="Doanh thu (VNĐ)"
+              value={paymentStats.total_amount}
               prefix={<DollarOutlined />}
-              suffix="USD"
               loading={loading}
               valueStyle={{ color: '#cf1322' }}
+              formatter={(v) => v.toLocaleString('vi-VN')}
             />
-            <div style={{ marginTop: 16 }}>
-              <ArrowDownOutlined style={{ color: '#cf1322' }} /> 2.1% from last month
+            <div style={{ marginTop: 16, color: '#666' }}>
+              <ArrowUpOutlined style={{ color: '#3f8600' }} />{' '}
+              {paymentStats.paid_count} giao dịch thành công
             </div>
           </Card>
         </Col>
@@ -152,15 +174,15 @@ const AdminDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false}>
             <Statistic
-              title="Growth Rate"
-              value={stats.growth}
+              title="Tổng giao dịch"
+              value={paymentStats.total_transactions}
               prefix={<RiseOutlined />}
-              suffix="%"
               loading={loading}
               valueStyle={{ color: '#3f8600' }}
             />
-            <div style={{ marginTop: 16 }}>
-              <ArrowUpOutlined style={{ color: '#3f8600' }} /> 5.2% from last month
+            <div style={{ marginTop: 16, color: '#666' }}>
+              <ArrowUpOutlined style={{ color: '#3f8600' }} />{' '}
+              {paymentStats.paid_count} đã thanh toán
             </div>
           </Card>
         </Col>
@@ -168,7 +190,7 @@ const AdminDashboard = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} lg={16}>
-          <Card title="Recent Users" bordered={false}>
+          <Card title="Người dùng gần đây" bordered={false}>
             <Table
               columns={userColumns}
               dataSource={recentUsers}
@@ -179,22 +201,44 @@ const AdminDashboard = () => {
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card title="System Status" bordered={false}>
+          <Card title="Tỉ lệ người dùng" bordered={false}>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>Database</div>
-              <Progress percent={85} status="active" />
+              <div style={{ marginBottom: 8 }}>Đang hoạt động</div>
+              <Progress
+                percent={
+                  userStats.total > 0
+                    ? Math.round((userStats.active / userStats.total) * 100)
+                    : 0
+                }
+                status="active"
+                format={(p) => `${p}%`}
+              />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>API Server</div>
-              <Progress percent={95} status="active" />
+              <div style={{ marginBottom: 8 }}>Không hoạt động</div>
+              <Progress
+                percent={
+                  userStats.total > 0
+                    ? Math.round((userStats.inactive / userStats.total) * 100)
+                    : 0
+                }
+                strokeColor="#f5222d"
+                format={(p) => `${p}%`}
+              />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8 }}>Storage</div>
-              <Progress percent={60} status="active" />
-            </div>
-            <div>
-              <div style={{ marginBottom: 8 }}>Memory</div>
-              <Progress percent={75} status="active" />
+              <div style={{ marginBottom: 8 }}>Giao dịch thành công</div>
+              <Progress
+                percent={
+                  paymentStats.total_transactions > 0
+                    ? Math.round(
+                        (paymentStats.paid_count / paymentStats.total_transactions) * 100
+                      )
+                    : 0
+                }
+                status="active"
+                strokeColor="#52c41a"
+              />
             </div>
           </Card>
         </Col>

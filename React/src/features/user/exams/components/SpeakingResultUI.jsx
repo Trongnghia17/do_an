@@ -431,8 +431,44 @@ const SpeakingResultUI = ({ result, aiGradingResult, onAIGrading, aiLoading }) =
             </div>
           )}
 
+          {/* Answers List - Nghe lại ghi âm */}
+          {result.answers && result.answers.length > 0 && (
+            <div className="speaking-answers-section">
+              <h3 className="speaking-answers-section__title">
+                <span>🎧</span> Câu Trả Lời Của Bạn
+              </h3>
+              {result.answers.map((answer, idx) => (
+                <div key={answer.question_id || idx} className="speaking-answer-item">
+                  <div className="speaking-answer-item__header">
+                    <span className="speaking-answer-item__num">Câu {answer.question_number || idx + 1}</span>
+                    {answer.part && (
+                      <span className="speaking-answer-item__part">{answer.part}</span>
+                    )}
+                  </div>
+                  {answer.question_content && (
+                    <p className="speaking-answer-item__question">{answer.question_content}</p>
+                  )}
+                  {answer.answer_audio ? (
+                    <div className="speaking-answer-item__audio">
+                      <audio
+                        controls
+                        src={answer.answer_audio}
+                        style={{ width: '100%' }}
+                        preload="metadata"
+                      />
+                    </div>
+                  ) : (
+                    <div className="speaking-answer-item__no-audio">
+                      ⚠️ Chưa có ghi âm
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Empty State */}
-          {!result.teacher_score && !aiGradingResult && (
+          {!result.teacher_score && !aiGradingResult && (!result.answers || result.answers.length === 0) && (
             <div className="speaking-result__empty-state">
               <div className="empty-state__icon">🎙️</div>
               <h3 className="empty-state__title">Đang Chờ Chấm Điểm</h3>

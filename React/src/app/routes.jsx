@@ -45,6 +45,9 @@ import ContentGenerator from '@/features/admin/pages/ContentGenerator';
 import TestQuickGenerator from '@/features/admin/pages/TestQuickGenerator';
 import PaymentPackageManagement from '@/features/admin/pages/PaymentPackageManagement';
 import PaymentHistoryManagement from '@/features/admin/pages/PaymentHistoryManagement';
+import ExamHistoryManagement from '@/features/admin/pages/ExamHistoryManagement';
+import AIGradingConfigManagement from '@/features/admin/pages/AIGradingConfigManagement';
+import AdminSubmissionDetail from '@/features/admin/pages/AdminSubmissionDetail';
 
 const PublicShell = (
   <MainLayout />
@@ -185,6 +188,9 @@ export const router = createBrowserRouter([
           { path: 'ai-generator', element: <AIExamGenerator /> },
           { path: 'payment-packages', element: <PaymentPackageManagement /> },
           { path: 'payment-history', element: <PaymentHistoryManagement /> },
+          { path: 'exam-history', element: <ExamHistoryManagement /> },
+          { path: 'exam-history/:submissionId', element: <AdminSubmissionDetail /> },
+          { path: 'ai-grading-config', element: <AIGradingConfigManagement /> },
           { path: 'quick-generator', element: <QuickQuestionGenerator /> },
           { path: 'content-generator', element: <ContentGenerator /> },
           { path: 'test-generator', element: <TestQuickGenerator /> },

@@ -11,6 +11,21 @@ const adminService = {
     return response.data;
   },
 
+  getPaymentStatistics: async () => {
+    const response = await fastapiService.adminPayment.getPaymentStatistics();
+    return response.data;
+  },
+
+  getExamStats: async () => {
+    const response = await fastapiService.exam.listExams({ per_page: 1 });
+    return response.data;
+  },
+
+  getRecentUsers: async (limit = 10) => {
+    const response = await fastapiService.user.listUsers({ page: 1, per_page: limit });
+    return response.data;
+  },
+
   // ========== User Management ==========
   getUsers: async (params) => {
     const response = await fastapiService.user.listUsers(params);

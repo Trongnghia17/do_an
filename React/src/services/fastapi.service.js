@@ -121,6 +121,10 @@ export const submissionAPI = {
   submitExam: (data) => api.post('/submissions/submit', data),
   getMySubmissions: (params) => api.get('/submissions/my-submissions', { params }),
   getSubmissionDetail: (submissionId) => api.get(`/submissions/submissions/${submissionId}`),
+  // Admin: lấy tất cả submissions của mọi user
+  adminGetAllSubmissions: (params) => api.get('/submissions/admin/all', { params }),
+  // Admin: lấy chi tiết 1 submission bất kỳ (không check user_id)
+  adminGetSubmissionDetail: (submissionId) => api.get(`/submissions/admin/${submissionId}`),
 };
 
 // ========== Payment & Wallet ==========
@@ -129,6 +133,13 @@ export const paymentAPI = {
   getPaymentHistory: () => api.get('/payments/history'),
   getPackages: () => api.get('/payments/packages'),
   createPayment: (data) => api.post('/payments/create', data),
+};
+
+// ========== Admin Payments ==========
+export const adminPaymentAPI = {
+  getPaymentHistory: (params) => api.get('/admin/payments/history', { params }),
+  getPaymentStatistics: () => api.get('/admin/payments/statistics'),
+  getWalletList: (params) => api.get('/admin/payments/wallets', { params }),
 };
 
 // Export all as default
@@ -145,6 +156,7 @@ export default {
   group: groupAPI,
   submission: submissionAPI,
   payment: paymentAPI,
+  adminPayment: adminPaymentAPI,
   client: api, // Export raw client for custom requests
 };
 
