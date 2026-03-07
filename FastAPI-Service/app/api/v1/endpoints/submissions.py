@@ -292,6 +292,288 @@ async def submit_exam(
         )
 
 
+@router.get("/admin/all")
+async def admin_get_all_submissions(
+    skip: int = 0,
+    limit: int = 50,
+    user_id: Optional[int] = None,
+    skill_type: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    [ADMIN] Get all submissions across all users.
+    Supports filters: user_id, skill_type, status, search (email or name)
+    """
+    if not current_user.role_id or current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="Chỉ admin mới có quyền truy cập")
+
+    try:
+        conditions = [ExamSubmission.deleted_at.is_(None)]
+
+        if user_id:
+            conditions.append(ExamSubmission.user_id == user_id)
+        if status_filter:
+            conditions.append(ExamSubmission.status == status_filter)
+
+        query = (
+            select(ExamSubmission, User, ExamSkill)
+            .join(User, ExamSubmission.user_id == User.id)
+            .join(ExamSkill, ExamSubmission.exam_skill_id == ExamSkill.id, isouter=True)
+            .where(and_(*conditions))
+        )
+
+        if skill_type:
+            query = query.where(ExamSkill.skill_type == skill_type)
+
+        if search:
+            from sqlalchemy import or_
+            query = query.where(
+                or_(
+                    User.email.ilike(f"%{search}%"),
+                    User.name.ilike(f"%{search}%"),
+                )
+            )
+
+        query = query.order_by(ExamSubmission.created_at.desc()).offset(skip).limit(limit)
+        result = await db.execute(query)
+        rows = result.all()
+
+        # Count total
+        from sqlalchemy import func as sql_func
+        count_query = (
+            select(sql_func.count(ExamSubmission.id))
+            .join(User, ExamSubmission.user_id == User.id)
+            .join(ExamSkill, ExamSubmission.exam_skill_id == ExamSkill.id, isouter=True)
+            .where(and_(*conditions))
+        )
+        if skill_type:
+            count_query = count_query.where(ExamSkill.skill_type == skill_type)
+        if search:
+            from sqlalchemy import or_ as or2
+            count_query = count_query.where(
+                or2(
+                    User.email.ilike(f"%{search}%"),
+                    User.name.ilike(f"%{search}%"),
+                )
+            )
+        total_result = await db.execute(count_query)
+        total = total_result.scalar_one_or_none() or 0
+
+        items = []
+        for sub, user, skill in rows:
+            total_q = (sub.max_score or 0)
+            correct_q = (sub.total_score or 0)
+            wrong_q = total_q - correct_q
+
+            def _fmt_duration(seconds):
+                if not seconds:
+                    return "00:00:00"
+                h = int(seconds // 3600)
+                m = int((seconds % 3600) // 60)
+                s = int(seconds % 60)
+                return f"{h:02d}:{m:02d}:{s:02d}"
+
+            items.append({
+                "id": sub.id,
+                "user_id": sub.user_id,
+                "user_email": user.email if user else "",
+                "user_name": user.name if user else "",
+                "skill_name": skill.name if skill else None,
+                "skill_type": skill.skill_type.value if skill else None,
+                "status": sub.status.value if hasattr(sub.status, "value") else sub.status,
+                "total_score": sub.total_score,
+                "max_score": sub.max_score,
+                "correct": int(correct_q),
+                "wrong": int(wrong_q),
+                "time_spent": _fmt_duration(sub.time_spent),
+                "submitted_at": sub.submitted_at.isoformat() if sub.submitted_at else None,
+                "created_at": sub.created_at.isoformat() if sub.created_at else None,
+            })
+
+        return {"success": True, "total": total, "data": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin get all submissions error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch submissions: {str(e)}")
+
+
+@router.get("/admin/{submission_id}")
+async def admin_get_submission_detail(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    [ADMIN] Get detailed submission by id – không check user_id
+    """
+    if not current_user.role_id or current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="Chỉ admin mới có quyền truy cập")
+
+    try:
+        result = await db.execute(
+            select(ExamSubmission).where(
+                ExamSubmission.id == submission_id,
+                ExamSubmission.deleted_at.is_(None)
+            )
+        )
+        submission = result.scalar_one_or_none()
+
+        if not submission:
+            raise HTTPException(status_code=404, detail="Submission not found")
+
+        # Lấy thông tin user
+        user_result = await db.execute(select(User).where(User.id == submission.user_id))
+        owner = user_result.scalar_one_or_none()
+
+        # Lấy skill
+        skill_result = await db.execute(select(ExamSkill).where(ExamSkill.id == submission.exam_skill_id))
+        skill = skill_result.scalar_one_or_none()
+
+        # Lấy section name
+        section_name = None
+        if submission.exam_section_id:
+            section_result = await db.execute(select(ExamSection).where(ExamSection.id == submission.exam_section_id))
+            section = section_result.scalar_one_or_none()
+            if section:
+                section_name = section.name
+
+        # Lấy tất cả câu hỏi của skill
+        questions_result = await db.execute(
+            select(ExamQuestion, ExamQuestionGroup, ExamSection)
+            .join(ExamQuestionGroup, ExamQuestion.question_group_id == ExamQuestionGroup.id)
+            .join(ExamSection, ExamQuestionGroup.exam_section_id == ExamSection.id)
+            .where(
+                ExamSection.exam_skill_id == submission.exam_skill_id,
+                ExamQuestion.deleted_at.is_(None),
+                ExamQuestionGroup.deleted_at.is_(None),
+                ExamSection.deleted_at.is_(None)
+            )
+            .order_by(ExamSection.id, ExamQuestion.id)
+        )
+        all_questions = questions_result.all()
+
+        # Lấy câu trả lời của user
+        answers_result = await db.execute(
+            select(UserExamAnswer).where(
+                UserExamAnswer.submission_id == submission_id,
+                UserExamAnswer.deleted_at.is_(None)
+            )
+        )
+        user_answers = {ans.question_id: ans for ans in answers_result.scalars().all()}
+
+        answers_list = []
+        correct_count = 0
+        overall_question_number = 1
+
+        for question, question_group, section in all_questions:
+            user_answer = user_answers.get(question.id)
+            is_correct = False
+            if user_answer:
+                is_correct = user_answer.is_correct if user_answer.is_correct is not None else False
+                if is_correct:
+                    correct_count += 1
+
+            correct_answer = question.correct_answer or "N/A"
+            if question.options:
+                try:
+                    options = json.loads(question.options) if isinstance(question.options, str) else question.options
+                    if isinstance(options, list) and len(options) > 0:
+                        for idx, option in enumerate(options):
+                            if isinstance(option, dict) and option.get('is_correct'):
+                                correct_answer = chr(65 + idx)
+                                break
+                    elif isinstance(options, dict):
+                        correct_answer_normalized = str(question.correct_answer).strip().lower()
+                        for key, value in options.items():
+                            if str(value).strip().lower() == correct_answer_normalized:
+                                correct_answer = key
+                                break
+                except (json.JSONDecodeError, TypeError, AttributeError):
+                    pass
+
+            metadata = {}
+            if question.options:
+                try:
+                    options_data = json.loads(question.options) if isinstance(question.options, str) else question.options
+                    if isinstance(options_data, list):
+                        metadata["answers"] = options_data
+                    elif isinstance(options_data, dict):
+                        if "answers" in options_data:
+                            metadata["answers"] = options_data["answers"]
+                        if "locate" in options_data:
+                            metadata["locate"] = options_data["locate"]
+                        if "metadata" in options_data:
+                            metadata.update(options_data["metadata"])
+                        if "options" in options_data:
+                            metadata["answers"] = options_data["options"]
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+            if question.explanation:
+                metadata["explanation"] = question.explanation
+
+            answers_list.append({
+                "question_id": question.id,
+                "question_number": overall_question_number,
+                "part": section.name if section else "Part 1",
+                "question_content": question.question_text or question.content or "",
+                "user_answer": user_answer.answer_text if user_answer and user_answer.answer_text else "",
+                "answer_audio": user_answer.answer_audio if user_answer and user_answer.answer_audio else None,
+                "correct_answer": correct_answer,
+                "is_correct": is_correct,
+                "score": user_answer.score if user_answer else None,
+                "ai_feedback": json.loads(user_answer.ai_feedback) if (user_answer and user_answer.ai_feedback) else None,
+                "has_ai_grading": bool(user_answer and user_answer.ai_feedback),
+                "metadata": metadata if metadata else None
+            })
+            overall_question_number += 1
+
+        total_questions = len(answers_list)
+        answered_questions = sum(1 for ans in answers_list if (ans["user_answer"] or ans.get("answer_audio")))
+
+        response_data = {
+            "id": submission.id,
+            "user_id": submission.user_id,
+            "user_email": owner.email if owner else "",
+            "user_name": owner.name if owner else "",
+            "exam_skill_id": submission.exam_skill_id,
+            "exam_section_id": submission.exam_section_id,
+            "status": submission.status.value if hasattr(submission.status, "value") else submission.status,
+            "started_at": submission.started_at.isoformat() if submission.started_at else None,
+            "submitted_at": submission.submitted_at.isoformat() if submission.submitted_at else None,
+            "time_spent": submission.time_spent or 0,
+            "total_score": submission.total_score,
+            "max_score": submission.max_score,
+            "created_at": submission.created_at.isoformat() if submission.created_at else None,
+            "updated_at": submission.updated_at.isoformat() if submission.updated_at else None,
+            "skill": {
+                "name": skill.name if skill else None,
+                "skill_type": skill.skill_type.value if skill else None
+            },
+            "exam": None,
+            "section_name": section_name,
+            "total_questions": total_questions,
+            "answered_questions": answered_questions,
+            "correct_answers": correct_count,
+            "teacher_score": getattr(submission, 'teacher_score', None),
+            "teacher_feedback": getattr(submission, 'teacher_feedback', None),
+            "answers": answers_list
+        }
+
+        return {"success": True, "data": response_data}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin get submission detail error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch submission detail: {str(e)}")
+
+
 @router.get("/my-submissions", response_model=List[SubmissionResponse])
 async def get_my_submissions(
     exam_skill_id: Optional[int] = None,
